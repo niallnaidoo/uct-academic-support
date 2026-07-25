@@ -1,0 +1,522 @@
+/*
+ * Academic module — component styles for the ADP wizard extras and the plan
+ * detail view. Loaded from academic.jsx (after index.html's base styles).
+ */
+
+/* Read-only "Term" field on Setup (derived from the date) */
+.fld-static {
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper2);
+  color: var(--ink);
+  font-size: 13.5px;
+}
+
+/* Wizard top actions + mentor-guide button */
+.adp-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.adp-guide-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: var(--white);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+.adp-guide-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.adp-guide-btn:hover,
+.adp-guide-btn.on {
+  border-color: var(--green-bright);
+  background: var(--green-pale);
+  color: var(--green);
+}
+
+/* Mentor guide (FAQ) panel */
+.faq-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--paper2);
+  padding: 16px 18px;
+}
+.faq-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.faq-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+.faq-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 24px;
+}
+@media (max-width: 760px) {
+  .faq-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.faq-item {
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
+}
+.faq-item summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink);
+  list-style: none;
+}
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+.faq-item summary::before {
+  content: '＋';
+  color: var(--green-mid);
+  margin-right: 7px;
+  font-weight: 700;
+}
+.faq-item[open] summary::before {
+  content: '－';
+}
+.faq-item p {
+  margin: 7px 0 2px 20px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+/* Question bank (prompts to ask the student) */
+.qbank-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 28px;
+}
+@media (max-width: 760px) {
+  .qbank-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.qbank-area {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--green-mid);
+  margin: 8px 0 4px;
+}
+.qbank-list {
+  margin: 0 0 4px;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.6;
+}
+.qbank-list li {
+  margin-bottom: 3px;
+}
+
+/* Plan tracking */
+.track-tally {
+  display: flex;
+  gap: 22px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.track-tally span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+a.btn {
+  text-decoration: none;
+}
+
+/* Public mentor completion page */
+.mentor-page {
+  min-height: 100vh;
+  background: var(--paper);
+  padding: 32px 20px 80px;
+}
+.mentor-card {
+  max-width: 520px;
+  margin: 8vh auto 0;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 32px 30px;
+  box-shadow: 0 12px 40px rgba(15, 23, 20, 0.08);
+}
+.mentor-card h1 {
+  font-size: 26px;
+  margin: 6px 0 12px;
+  letter-spacing: -0.01em;
+}
+.mentor-card p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+  margin: 0 0 16px;
+}
+.mentor-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--green-mid);
+}
+.mentor-wizard-page {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+.mentor-intro {
+  max-width: 1040px;
+  margin: 0 auto 18px;
+}
+.mentor-intro h1 {
+  font-size: 26px;
+  margin: 6px 0 8px;
+  letter-spacing: -0.01em;
+}
+.mentor-intro p {
+  max-width: 700px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.mentor-wizard {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+}
+
+/* Radar chart */
+.radar-wrap {
+  padding: 6px 0 2px;
+}
+.radar-wrap svg text {
+  font-family: inherit;
+}
+
+/* Dashboard development-plan radar + callouts */
+.dash-radar-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.dash-radar-row .radar-wrap {
+  flex: 0 0 auto;
+}
+.dash-radar-side {
+  flex: 1;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dash-callout {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--paper2);
+}
+.dash-callout-l {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 700;
+}
+.dash-callout-v {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* Module switcher bar on the Content / Assessments steps */
+.mod-switch {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.mod-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+}
+.mod-switch-btn:hover {
+  border-color: var(--green-bright);
+}
+.mod-switch-btn.on {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+.mod-switch-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.mod-switch-btn.on .mod-switch-dot {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.28);
+}
+
+/* Tailored descriptor shown under each slider */
+.adp-scale {
+  flex-wrap: wrap;
+}
+.adp-scale-desc {
+  flex: 1 1 100%;
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+/* "To improve" tip in the rating pop-up */
+.adp-legend-improve {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink);
+  line-height: 1.45;
+}
+.adp-legend-improve strong {
+  color: var(--green-mid);
+}
+
+/* Clickable plan rows */
+.tbl-click tbody tr {
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.tbl-click tbody tr:hover {
+  background: var(--paper2);
+}
+.tbl-click tbody tr:focus-visible {
+  outline: 2px solid var(--green-bright);
+  outline-offset: -2px;
+}
+
+/* ── Development-plan detail modal ── */
+.det-modal {
+  max-width: 720px;
+  width: calc(100vw - 40px);
+  max-height: 90vh;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.det-hero {
+  position: relative;
+  background: linear-gradient(135deg, var(--ink) 0%, #1b2a24 100%);
+  color: #fff;
+  padding: 24px 28px 20px;
+  flex: 0 0 auto;
+}
+.det-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  color: rgba(255, 255, 255, 0.8);
+}
+.det-close:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+.det-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--green-bright);
+  margin-bottom: 6px;
+}
+.det-name {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.det-sub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.72);
+  margin-top: 3px;
+}
+.det-hero-stats {
+  display: flex;
+  gap: 28px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.det-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.det-stat-n {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+}
+.det-hero .t-red {
+  color: var(--coral);
+}
+.det-hero .t-amber {
+  color: var(--gold-warm);
+}
+.det-hero .t-green {
+  color: var(--green-bright);
+}
+.det-stat-l {
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.det-body {
+  padding: 20px 28px 26px;
+  overflow-y: auto;
+}
+.det-sec {
+  margin-bottom: 22px;
+}
+.det-sec:last-child {
+  margin-bottom: 0;
+}
+.det-sec-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.det-modrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.det-modblock {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 12px 15px;
+  margin-bottom: 10px;
+}
+.det-modblock-head {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.det-rating {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--paper2);
+}
+.det-rating:last-child {
+  border-bottom: 0;
+}
+.det-rating-label {
+  font-size: 13px;
+  color: var(--ink);
+}
+.det-rating-vals {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.det-who {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted-2);
+}
+.det-chip {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+.det-chip.tone-green {
+  background: var(--green-pale);
+  color: var(--green);
+}
+.det-chip.tone-amber {
+  background: rgba(196, 146, 42, 0.14);
+  color: #8a6516;
+}
+.det-chip.tone-red {
+  background: rgba(216, 90, 48, 0.14);
+  color: #a83718;
+}
+.det-chip.muted {
+  background: var(--paper2);
+  color: var(--muted);
+}
+.det-gap {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--gold-warm);
+  margin-left: 4px;
+}
+.det-gap.big {
+  color: var(--coral);
+}
+.det-note {
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.55;
+  background: var(--paper2);
+  border-radius: var(--radius);
+  padding: 10px 13px;
+  margin-top: 8px;
+}
+.det-plan {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+.det-plan-note {
+  font-size: 12px;
+  margin-top: 1px;
+}

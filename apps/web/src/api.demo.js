@@ -1,0 +1,283 @@
+/**
+ * In-browser demo backend — a localStorage-backed mock of the real API.
+ *
+ * Used when no VITE_API_URL is set (the GitHub Pages demo). Every function mirrors
+ * the real endpoint's behaviour (id/token minting, upper-cased student numbers,
+ * assessedAt stamping, the mentor-plan token flow) so the UI is exercised exactly
+ * as it would be against the Hono backend — just with no server and no auth.
+ */
+import { demoAthletes, demoMentors } from './demo-seed.js';
+
+const KEY = 'uct-academic-demo-v1';
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    /* fall through to seed */
+  }
+  const db = {
+    athletes: demoAthletes(),
+    mentors: demoMentors(),
+    checkIns: [],
+    interventions: [],
+  };
+  save(db);
+  return db;
+}
+function save(db) {
+  localStorage.setItem(KEY, JSON.stringify(db));
+}
+function mutate(fn) {
+  const db = load();
+  const result = fn(db);
+  save(db);
+  return result;
+}
+
+const uid = (prefix) =>
+  `${prefix}-${(crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).slice(0, 8)}`;
+const tokenStr = () =>
+  (Array.from(crypto.getRandomValues?.(new Uint8Array(18)) ?? []).map((b) => b.toString(36)).join('') ||
+    Math.random().toString(36).slice(2)).slice(0, 24);
+const now = () => new Date().toISOString();
+const today = () => now().slice(0, 10);
+const clone = (v) => JSON.parse(JSON.stringify(v));
+const ok = (v) => Promise.resolve(clone(v));
+
+/* Reset helper the demo banner can call. */
+export function resetDemo() {
+  localStorage.removeItem(KEY);
+}
+
+/* ── Athletes ── */
+export const getAthletes = () => ok(load().athletes);
+export const getAthlete = (id) => ok(load().athletes.find((a) => a.id === id) ?? null);
+export const createAthlete = (body) =>
+  ok(
+    mutate((db) => {
+      const assessed =
+        body.lectureAttendance != null ||
+        body.semesterAverage != null ||
+        body.assignmentCompletion != null;
+      const a = {
+        ...body,
+        id: uid('ath'),
+        studentNumber: String(body.studentNumber ?? '').trim().toUpperCase(),
+        status: body.status ?? 'active',
+        assessedAt: assessed ? now() : undefined,
+        version: 1,
+      };
+      db.athletes.push(a);
+      return a;
+    }),
+  );
+export const patchAthlete = (id, patch) =>
+  ok(
+    mutate((db) => {
+      const a = db.athletes.find((x) => x.id === id);
+      if (!a) throw new Error('athlete not found');
+      Object.assign(a, patch, { id, version: (a.version ?? 1) + 1 });
+      const touched = ['lectureAttendance', 'tutorialAttendance', 'assignmentCompletion', 'semesterAverage', 'facultyWarning'];
+      if (touched.some((k) => k in patch)) a.assessedAt = now();
+      return a;
+    }),
+  );
+export const deleteAthlete = (id) =>
+  ok(
+    mutate((db) => {
+      db.athletes = db.athletes.filter((a) => a.id !== id);
+      return { ok: true };
+    }),
+  );
+
+/* ── Mentors ── */
+export const getMentors = () => ok(load().mentors);
+export const createMentor = (body) => {
+  if (!body.name?.trim()) return Promise.reject(new Error('a name is required'));
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(body.email ?? '').trim()))
+    return Promise.reject(new Error('a valid email address is required'));
+  return ok(
+    mutate((db) => {
+      const m = {
+        id: uid('mtr'),
+        name: body.name.trim(),
+        email: body.email.trim().toLowerCase(),
+        phone: body.phone?.trim() || undefined,
+        organisation: body.organisation?.trim() || undefined,
+        version: 1,
+      };
+      db.mentors.push(m);
+      return m;
+    }),
+  );
+};
+export const patchMentor = (id, patch) =>
+  ok(
+    mutate((db) => {
+      const m = db.mentors.find((x) => x.id === id);
+      if (!m) throw new Error('mentor not found');
+      Object.assign(m, patch, { id, version: (m.version ?? 1) + 1 });
+      return m;
+    }),
+  );
+export const deleteMentor = (id) =>
+  ok(
+    mutate((db) => {
+      db.mentors = db.mentors.filter((m) => m.id !== id);
+      return { ok: true };
+    }),
+  );
+
+/* ── Development plans (check-ins) ── */
+export const getCheckIns = () =>
+  ok([...load().checkIns].sort((a, b) => String(b.date).localeCompare(String(a.date))));
+export const createCheckIn = (body) =>
+  ok(
+    mutate((db) => {
+      const athlete = db.athletes.find((a) => a.id === body.athleteId);
+      const id = uid('chk');
+      const token = body.planStatus === 'sent' ? tokenStr() : undefined;
+      const c = {
+        id,
+        studentNumber: String(body.studentNumber ?? '').trim().toUpperCase(),
+        athleteName:
+          body.athleteName ?? (athlete ? `${athlete.firstName} ${athlete.lastName}` : body.studentNumber),
+        date: body.date || today(),
+        mentor: body.mentor ?? athlete?.mentor,
+        followUpRequired: body.followUpRequired,
+        answers: body.answers ?? {},
+        note: body.note,
+        kind: body.kind,
+        period: body.period,
+        modules: body.modules,
+        sections: body.sections,
+        plan: body.plan,
+        mentorEmail: body.mentorEmail,
+        planStatus: body.planStatus,
+        token,
+        scheduledNext: body.scheduledNext,
+        sentAt: body.planStatus === 'sent' ? now() : undefined,
+        createdAt: now(),
+        version: 1,
+      };
+      db.checkIns.push(c);
+      return c;
+    }),
+  );
+export const deleteCheckIn = (id) =>
+  ok(
+    mutate((db) => {
+      db.checkIns = db.checkIns.filter((c) => c.id !== id);
+      return { ok: true };
+    }),
+  );
+
+/* ── Interventions ── */
+export const getInterventions = () =>
+  ok([...load().interventions].sort((a, b) => String(b.date).localeCompare(String(a.date))));
+export const createIntervention = (body) =>
+  ok(
+    mutate((db) => {
+      const athlete = db.athletes.find((a) => a.id === body.athleteId);
+      const iv = {
+        id: uid('int'),
+        studentNumber: String(body.studentNumber ?? '').trim().toUpperCase(),
+        athleteName:
+          body.athleteName ?? (athlete ? `${athlete.firstName} ${athlete.lastName}` : body.studentNumber),
+        date: body.date || today(),
+        concern: body.concern,
+        actionTaken: body.actionTaken,
+        referredTo: body.referredTo,
+        followUpDate: body.followUpDate,
+        status: body.status ?? 'open',
+        createdAt: now(),
+        version: 1,
+      };
+      db.interventions.push(iv);
+      return iv;
+    }),
+  );
+export const patchIntervention = (id, patch) =>
+  ok(
+    mutate((db) => {
+      const iv = db.interventions.find((x) => x.id === id);
+      if (!iv) throw new Error('intervention not found');
+      Object.assign(iv, patch, { id, version: (iv.version ?? 1) + 1 });
+      return iv;
+    }),
+  );
+export const deleteIntervention = (id) =>
+  ok(
+    mutate((db) => {
+      db.interventions = db.interventions.filter((iv) => iv.id !== id);
+      return { ok: true };
+    }),
+  );
+
+/* ── Public mentor-plan flow (token-gated) ── */
+function resolvePlan(id, token, db) {
+  const c = db.checkIns.find((x) => x.id === id);
+  if (!c || !c.token || c.token !== token) throw new Error('this link is not valid');
+  return c;
+}
+export const getMentorPlan = (id, token) => {
+  const db = load();
+  let c;
+  try {
+    c = resolvePlan(id, token, db);
+  } catch (e) {
+    return Promise.reject(e);
+  }
+  const athlete = db.athletes.find((a) => a.studentNumber === c.studentNumber);
+  return ok({
+    athleteName: c.athleteName,
+    studentNumber: c.studentNumber,
+    faculty: athlete?.faculty,
+    degree: athlete?.degree,
+    squad: athlete?.squad,
+    period: c.period,
+    mentor: c.mentor,
+    scheduledNext: c.scheduledNext,
+    planStatus: c.planStatus,
+    completedAt: c.completedAt,
+    modules: c.modules ?? [],
+    sections: c.sections ?? {},
+    plan: c.plan ?? [],
+    note: c.note,
+  });
+};
+export const submitMentorPlan = (id, token, body) =>
+  ok(
+    mutate((db) => {
+      const c = resolvePlan(id, token, db);
+      Object.assign(c, {
+        modules: body.modules ?? c.modules,
+        sections: body.sections ?? c.sections,
+        plan: body.plan ?? c.plan,
+        note: body.note ?? c.note,
+        scheduledNext: body.scheduledNext ?? c.scheduledNext,
+        followUpRequired: body.followUpRequired ?? c.followUpRequired,
+        planStatus: 'completed',
+        completedAt: now(),
+        date: today(),
+        version: (c.version ?? 1) + 1,
+      });
+      for (const item of body.plan ?? []) {
+        db.interventions.push({
+          id: uid('int'),
+          studentNumber: c.studentNumber,
+          athleteName: c.athleteName,
+          date: today(),
+          concern: `${item.type ?? 'intervention'}${item.module ? ` · ${item.module}` : ''}${c.period ? ` · ${c.period}` : ''}`,
+          actionTaken: item.type,
+          referredTo: item.referredTo,
+          followUpDate: item.dueDate,
+          status: 'open',
+          version: 1,
+        });
+      }
+      return { ok: true, athleteName: c.athleteName };
+    }),
+  );

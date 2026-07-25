@@ -1,0 +1,78 @@
+/*
+ * Module screener — layout fixes, scoped to the screener only.
+ *
+ * The screener markup reuses `.module-card`, which the admin hub already styles
+ * as a flex card (display:flex). The screener card inherited that, so its header,
+ * catalogue meta and question grid were laid out side-by-side in a row — which
+ * also squeezed the module-name box (long titles truncated).
+ *
+ * Everything here is scoped under `.module-list` (the screener's own wrapper), so
+ * the hub's module cards are untouched and no JSX class changes are needed. This
+ * file loads after index.html's inline styles, so these rules win.
+ */
+
+/* THE core fix: the screener card must stack, not lay out as a flex row. */
+.module-list .module-card {
+  display: block;
+  padding: 16px 18px;
+}
+
+/* Identity row: code + a name box that grows for long titles + pills on the right */
+.module-list .module-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+.module-list .module-code {
+  width: 124px;
+  flex: 0 0 auto;
+  padding: 9px 12px;
+  font-size: 13.5px;
+}
+/* Dynamic width for longer names — grows to fill the row, never truncates hard */
+.module-list .module-name {
+  flex: 1 1 260px;
+  min-width: 200px;
+  padding: 9px 12px;
+  font-size: 13.5px;
+}
+.module-list .module-code:focus,
+.module-list .module-name:focus {
+  box-shadow: 0 0 0 3px var(--green-pale);
+}
+
+/* Catalogue meta line sits under the identity row */
+.module-list .module-meta {
+  margin: 12px 2px 0;
+}
+
+/* Question grid: responsive columns that wrap cleanly instead of a rigid 2×2,
+   with a hairline divider separating triage from identity. */
+.module-list .screen-grid {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px 22px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.module-list .screen-q-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.module-list .opt {
+  padding: 6px 12px;
+}
+
+/* Give the tally a touch of breathing room in the card header */
+.screen-tally {
+  gap: 4px 6px;
+}

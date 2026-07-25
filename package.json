@@ -1,0 +1,16 @@
+{
+  "name": "uct-academic-support",
+  "private": true,
+  "version": "0.1.0",
+  "description": "UCT student-athlete academic support — development plans, external mentors, and a course-catalogue-aware screener.",
+  "workspaces": [
+    "apps/web",
+    "packages/api"
+  ],
+  "scripts": {
+    "dev": "npm --workspace apps/web run dev",
+    "build": "npm --workspace apps/web run build",
+    "dev:api": "npm --prefix packages/api run dev:local",
+    "test:api": "npm --prefix packages/api test"
+  }
+}
