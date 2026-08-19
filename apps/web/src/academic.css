@@ -1043,3 +1043,118 @@ a.btn {
     justify-content: center;
   }
 }
+
+/* ── Settings tab ── */
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.settings-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.settings-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 13.5px;
+  background: var(--white);
+}
+.settings-row-admin input:first-child {
+  flex: 0 0 40%;
+}
+.settings-save {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+@media (max-width: 560px) {
+  .settings-row-admin {
+    flex-wrap: wrap;
+  }
+  .settings-row-admin input:first-child {
+    flex: 1 1 100%;
+  }
+}
+
+/* ── Report link share (in the plan detail) ── */
+.report-share {
+  border: 1px solid var(--green-bright);
+  background: var(--green-pale);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.report-share-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.report-share-head svg {
+  width: 18px;
+  height: 18px;
+  color: var(--green-mid);
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+.report-share-head strong {
+  color: var(--green);
+  font-size: 14px;
+}
+.report-share-link {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 12.5px;
+  background: var(--white);
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+.report-share-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Embedded plan detail (public report page) ── */
+.report-page {
+  padding-bottom: 70px;
+}
+.det-embedded {
+  max-width: 1040px;
+  width: 100%;
+  margin: 0 auto;
+  max-height: none;
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 20px rgba(10, 15, 20, 0.06);
+}
+
+/* Report link on the mentor thank-you card */
+.mentor-report-link {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mentor-report-link .muted {
+  font-size: 12.5px;
+}
+.mentor-report-link input {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 12.5px;
+  background: var(--paper);
+}

@@ -35,6 +35,7 @@ const blankModule = () => ({ _id: rowId(), code: '', name: '', sessions: [], ass
 
 export function StudentOnboardingPage() {
   const [profiles, setProfiles] = useState({});
+  const [settings, setSettings] = useState(null);
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -42,7 +43,6 @@ export function StudentOnboardingPage() {
     faculty: '',
     degree: '',
     yearOfStudy: '',
-    consent: false,
   });
   const [modules, setModules] = useState([blankModule()]);
   const [busy, setBusy] = useState(false);
@@ -51,7 +51,10 @@ export function StudentOnboardingPage() {
 
   useEffect(() => {
     api.getModuleProfiles().then(setProfiles).catch(() => setProfiles({}));
+    api.getSettings().then(setSettings).catch(() => setSettings(null));
   }, []);
+  const programme = settings?.programmeName ?? 'Academic Support';
+  const org = settings?.orgShort ?? settings?.orgName ?? '';
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
   const degrees = form.faculty ? DEGREES_BY_FACULTY[form.faculty] : [];
@@ -152,6 +155,7 @@ export function StudentOnboardingPage() {
           times: sessionsToText(m.sessions) || undefined,
           assessments: (m.assessments ?? []).filter((a) => a.date || a.label),
         })),
+        consent: true,
       });
       setDone({ name: `${athlete.firstName} ${athlete.lastName}`, modules: real.length });
     } catch (err) {
@@ -182,7 +186,9 @@ export function StudentOnboardingPage() {
   return (
     <div className="mentor-page onboard-page">
       <div className="mentor-intro">
-        <div className="mentor-eyebrow">Academic support · Student registration</div>
+        <div className="mentor-eyebrow">
+          {org ? `${org} ${programme}` : programme} · Student registration
+        </div>
         <h1>Let’s get you set up</h1>
         <p className="muted">
           A couple of details and the modules you’re taking this semester. It takes about two
@@ -270,17 +276,6 @@ export function StudentOnboardingPage() {
             Add another module
           </Btn>
         </Card>
-
-        <label className="onboard-consent">
-          <input
-            type="checkbox"
-            checked={form.consent}
-            onChange={(e) => set({ consent: e.target.checked })}
-          />
-          <span>
-            I agree that the sport office can use these details to support me academically.
-          </span>
-        </label>
 
         {error && (
           <div className="form-error" role="alert">

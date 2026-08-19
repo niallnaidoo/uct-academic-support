@@ -105,11 +105,21 @@ single-table design, packaged for AWS Lambda via [SST](https://sst.dev).
   (development plans), `/interventions`, and the public `/mentor-plan/:id`
   (token-gated, no auth). These are the routes this app uses; the package also
   carries the parent platform's other modules, which the dev team can remove.
-- **To build server-side** — two endpoints the onboarding flow calls (mocked in
-  the demo, stubbed in `api.live.js`): `GET /admin/academic/module-profiles`
-  (the shared class-times/assessment-dates store, keyed by course code) and the
-  public `POST /onboarding` (upserts an athlete by student number and folds each
-  module's detail into the profile store — this is what powers auto-populate).
+- **To build server-side** — endpoints the demo mocks and `api.live.js` stubs:
+  `GET /admin/academic/module-profiles` (shared class-times/assessment-dates
+  store, keyed by course code) and public `POST /onboarding` (upserts an athlete
+  and folds each module's detail into the profile store — powers auto-populate);
+  `GET`/`PUT /admin/academic/settings` (per-tenant org config — see below).
+- **No-password report link** — every ADP plan carries a `token`; the public
+  route `#/report/:id?t=<token>` renders the completed plan read-only for the
+  student and mentor (no auth), reusing the same `GET /mentor-plan/:id` handler.
+  Mint the token when the plan is created (assigned *or* completed in-house), not
+  only on assignment.
+- **Multi-tenant / scalable** — a Settings tab configures the organisation
+  (institution, sport/code, programme name, squads, administrators) so the same
+  platform serves any school or sporting code. In this demo it's one shared
+  settings record; server-side, scope settings (and every row) per tenant and
+  drive the admin allow-list off the `admins` list against your SSO.
 - **Auth** — Cognito passwordless email OTP in production; a dev bypass
   (`x-dev-auth`) locally. Wire the production Cognito bearer in
   `apps/web/src/api.live.js` (`authHeaders`). The admin login screen

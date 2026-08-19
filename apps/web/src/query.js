@@ -10,6 +10,7 @@ export const qk = {
   athlete: (id) => ['athlete', id],
   mentors: () => ['mentors'],
   moduleProfiles: () => ['module-profiles'],
+  settings: () => ['settings'],
   checkIns: () => ['check-ins'],
   interventions: () => ['interventions'],
 };

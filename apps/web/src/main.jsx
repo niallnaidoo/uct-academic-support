@@ -9,12 +9,14 @@
 import { StrictMode, useState, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter, Routes, Route } from 'react-router-dom';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { queryClient } from './query.js';
+import { QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { queryClient, qk } from './query.js';
+import * as api from './api.js';
 import { IS_DEMO, resetDemo } from './api.js';
 import { AcademicModule } from './academic.jsx';
 import { MentorPlanPage } from './MentorPlanPage.jsx';
 import { StudentOnboardingPage } from './StudentOnboardingPage.jsx';
+import { ReportPage } from './ReportPage.jsx';
 import './app.css';
 
 const ADMIN_KEY = 'uct-academic-admin';
@@ -104,7 +106,6 @@ function AdminLogin({ onAuthed }) {
 }
 
 function AdminApp() {
-  const [toast, toastNode] = useToasts();
   const [authed, setAuthed] = useState(() => {
     try {
       return !!localStorage.getItem(ADMIN_KEY);
@@ -124,12 +125,23 @@ function AdminApp() {
     setAuthed(false);
   }
 
+  return <AdminShell onSignOut={signOut} />;
+}
+
+function AdminShell({ onSignOut }) {
+  const [toast, toastNode] = useToasts();
+  const { data: settings } = useQuery({ queryKey: qk.settings(), queryFn: api.getSettings });
+  const brand = settings
+    ? `${settings.orgShort || settings.orgName || ''} ${settings.programmeName || 'Academic Support'}`.trim()
+    : 'Academic Support';
+  const sub = settings?.sport ? `${settings.sport} · academic tracking` : 'Student-athlete academic tracking';
+
   return (
     <div className="app-shell">
       <header className="app-bar">
         <div className="app-brand">
-          UCT Academic Support
-          <span className="app-brand-sub">Student-athlete academic tracking</span>
+          {brand}
+          <span className="app-brand-sub">{sub}</span>
         </div>
         <div className="app-bar-right">
           {IS_DEMO && (
@@ -148,7 +160,7 @@ function AdminApp() {
               </button>
             </div>
           )}
-          <button className="app-signout" onClick={signOut}>
+          <button className="app-signout" onClick={onSignOut}>
             Sign out
           </button>
         </div>
@@ -168,6 +180,7 @@ createRoot(document.getElementById('root')).render(
         <Routes>
           <Route path="/onboard" element={<StudentOnboardingPage />} />
           <Route path="/mentor/:id" element={<MentorPlanPage />} />
+          <Route path="/report/:id" element={<ReportPage />} />
           <Route path="*" element={<AdminApp />} />
         </Routes>
       </HashRouter>

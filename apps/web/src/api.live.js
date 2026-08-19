@@ -43,6 +43,11 @@ export const patchAthlete = (id, patch) =>
   req(`/admin/academic/athletes/${id}`, { method: 'PATCH', body: patch });
 export const deleteAthlete = (id) => req(`/admin/academic/athletes/${id}`, { method: 'DELETE' });
 
+// Organisation settings — per-tenant config (name, sport, squads, admins).
+export const getSettings = () => req('/admin/academic/settings');
+export const updateSettings = (patch) =>
+  req('/admin/academic/settings', { method: 'PUT', body: patch });
+
 // Module profiles power the onboarding auto-populate. `getModuleProfiles` is admin
 // (the roster view); onboarding submission is public (the student's link is the
 // credential). Endpoints for the dev team to add server-side; see README.

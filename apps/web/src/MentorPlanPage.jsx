@@ -90,6 +90,16 @@ export function MentorPlanPage() {
           <Btn tone="primary" onClick={() => setShowSummary(true)}>
             View the summary
           </Btn>
+          <div className="mentor-report-link">
+            <span className="muted">
+              Report link — the student and mentor can open this any time, no login:
+            </span>
+            <input
+              readOnly
+              value={`${window.location.origin}${import.meta.env.BASE_URL}#/report/${id}?t=${token}`}
+              onFocus={(e) => e.target.select()}
+            />
+          </div>
         </div>
       </div>
     );

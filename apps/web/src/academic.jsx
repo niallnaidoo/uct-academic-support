@@ -96,6 +96,11 @@ function onboardLink() {
   return `${window.location.origin}${import.meta.env.BASE_URL}#/onboard`;
 }
 
+/** The public, no-password report link for a completed plan (student + mentor). */
+function reportLink(checkIn) {
+  return `${window.location.origin}${import.meta.env.BASE_URL}#/report/${checkIn.id}?t=${checkIn.token}`;
+}
+
 const RiskPill = ({ athlete }) => {
   const r = academicRisk(athlete);
   return <Pill tone={RISK_META[r].tone}>{RISK_META[r].label}</Pill>;
@@ -114,6 +119,8 @@ export function AcademicModule({ toast }) {
     queryKey: qk.interventions(),
     queryFn: api.getInterventions,
   });
+  const { data: settings } = useQuery({ queryKey: qk.settings(), queryFn: api.getSettings });
+  const squads = settings?.squads?.length ? settings.squads : SQUADS;
 
   const tabs = [
     { key: 'dashboard', label: 'Dashboard' },
@@ -122,6 +129,7 @@ export function AcademicModule({ toast }) {
     { key: 'checkins', label: 'Academic development plans' },
     { key: 'mentors', label: 'Mentors', badge: mentors.length || null },
     { key: 'interventions', label: 'Interventions' },
+    { key: 'settings', label: 'Settings' },
   ];
 
   if (openAthlete) {
@@ -160,7 +168,7 @@ export function AcademicModule({ toast }) {
         />
       )}
       {tab === 'athletes' && (
-        <AthletesTab athletes={athletes} toast={toast} onOpen={setOpenAthlete} />
+        <AthletesTab athletes={athletes} squads={squads} toast={toast} onOpen={setOpenAthlete} />
       )}
       {tab === 'tracker' && (
         <TrackerTab athletes={athletes} toast={toast} onOpen={setOpenAthlete} />
@@ -172,6 +180,7 @@ export function AcademicModule({ toast }) {
       {tab === 'interventions' && (
         <InterventionsTab athletes={athletes} interventions={interventions} toast={toast} />
       )}
+      {tab === 'settings' && <SettingsTab settings={settings} toast={toast} />}
     </>
   );
 }
@@ -444,7 +453,7 @@ function DashboardTab({ athletes, interventions, checkIns, onOpen }) {
 
 /* ═══════════════════════════════ Athletes ═══════════════════════════════ */
 
-function AthletesTab({ athletes, toast, onOpen }) {
+function AthletesTab({ athletes, squads = SQUADS, toast, onOpen }) {
   const [adding, setAdding] = useState(false);
   const [onboarding, setOnboarding] = useState(false);
   const [squad, setSquad] = useState('all');
@@ -465,7 +474,7 @@ function AthletesTab({ athletes, toast, onOpen }) {
 
   return (
     <>
-      {adding && <AthleteForm onClose={() => setAdding(false)} toast={toast} />}
+      {adding && <AthleteForm squads={squads} onClose={() => setAdding(false)} toast={toast} />}
       {onboarding && <OnboardLinkModal onClose={() => setOnboarding(false)} toast={toast} />}
       <Card
         title="Student-athletes"
@@ -501,7 +510,7 @@ function AthletesTab({ athletes, toast, onOpen }) {
               onChange: setSquad,
               options: [
                 { value: 'all', label: 'All squads' },
-                ...SQUADS.map((s) => ({ value: s, label: s })),
+                ...squads.map((s) => ({ value: s, label: s })),
               ],
             },
             {
@@ -662,12 +671,12 @@ function OnboardLinkModal({ onClose, toast }) {
   );
 }
 
-function AthleteForm({ onClose, toast }) {
+function AthleteForm({ onClose, toast, squads = SQUADS }) {
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
     studentNumber: '',
-    squad: 'General',
+    squad: squads[0] ?? 'General',
     faculty: '',
     degree: '',
     yearOfStudy: '',
@@ -747,7 +756,7 @@ function AthleteForm({ onClose, toast }) {
             <label className="fld">
               <span>Squad</span>
               <select value={form.squad} onChange={(e) => set({ squad: e.target.value })}>
-                {SQUADS.map((s) => (
+                {squads.map((s) => (
                   <option key={s}>{s}</option>
                 ))}
               </select>
@@ -3216,21 +3225,23 @@ function DetailRating({ attr, rating }) {
   );
 }
 
-export function AdpDetail({ checkIn, athletes, onClose }) {
+export function AdpDetail({ checkIn, athletes, onClose, embedded = false }) {
   const isAdp = checkIn.kind === ADP_KIND;
   const sum = isAdp ? adpSummary(checkIn) : null;
   const athlete = athletes.find((a) => a.studentNumber === checkIn.studentNumber);
   const modules = checkIn.modules ?? [];
   const sections = checkIn.sections ?? {};
   const plan = checkIn.plan ?? [];
+  const canShare = !embedded && isAdp && !!checkIn.token;
 
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal det-modal" onClick={(e) => e.stopPropagation()}>
+  const body = (
+    <div className={`modal det-modal ${embedded ? 'det-embedded' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="det-hero">
-          <button className="icon-btn det-close" onClick={onClose} aria-label="Close">
-            <Icon.X />
-          </button>
+          {!embedded && (
+            <button className="icon-btn det-close" onClick={onClose} aria-label="Close">
+              <Icon.X />
+            </button>
+          )}
           <div className="det-eyebrow">
             {isAdp ? 'Academic Development Plan' : 'Check-in'}
             {checkIn.period ? ` · ${checkIn.period}` : ''}
@@ -3271,6 +3282,8 @@ export function AdpDetail({ checkIn, athletes, onClose }) {
         </div>
 
         <div className="det-body">
+          {canShare && <ReportShare checkIn={checkIn} />}
+
           {!isAdp && (
             <p className="muted">
               This is a legacy bi-weekly check-in. {checkInFlags(checkIn.answers)} of the 13 review
@@ -3368,8 +3381,246 @@ export function AdpDetail({ checkIn, athletes, onClose }) {
             </section>
           )}
         </div>
+    </div>
+  );
+
+  if (embedded) return body;
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      {body}
+    </div>
+  );
+}
+
+/** Report-link share row — copy or email the no-password report to student + mentor. */
+function ReportShare({ checkIn }) {
+  const [copied, setCopied] = useState(false);
+  const link = reportLink(checkIn);
+  const subject = encodeURIComponent(`Academic development plan — ${checkIn.athleteName}`);
+  const emailBody = encodeURIComponent(
+    `Hi,\n\nHere is the academic development plan report for ${checkIn.athleteName}` +
+      `${checkIn.period ? ` (${checkIn.period})` : ''}. Open it any time — no login needed:\n\n${link}\n\nThanks.`,
+  );
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* ignore — the field is selectable */
+    }
+  };
+  return (
+    <div className="report-share">
+      <div className="report-share-head">
+        <Icon.Doc />
+        <div>
+          <strong>Report link</strong>
+          <div className="muted" style={{ fontSize: 12 }}>
+            Share with the student and mentor — they open it with no password.
+          </div>
+        </div>
+      </div>
+      <input className="report-share-link" readOnly value={link} onFocus={(e) => e.target.select()} />
+      <div className="report-share-actions">
+        <a
+          className="btn btn-outline"
+          href={`mailto:${checkIn.mentorEmail ?? ''}?subject=${subject}&body=${emailBody}`}
+        >
+          <Icon.Mail /> Email report
+        </a>
+        <Btn tone="primary" icon={Icon.Doc} onClick={copy}>
+          {copied ? 'Copied!' : 'Copy report link'}
+        </Btn>
       </div>
     </div>
+  );
+}
+
+/* ═══════════════════════════════ Settings ═══════════════════════════════ */
+
+function SettingsTab({ settings, toast }) {
+  if (!settings) {
+    return (
+      <Card title="Organisation settings">
+        <EmptyState icon={Icon.Shield} title="Loading settings…" />
+      </Card>
+    );
+  }
+  return <SettingsForm settings={settings} toast={toast} />;
+}
+
+/**
+ * Organisation settings — the tenant configuration that makes this platform
+ * reusable for any school or sporting code: who runs it, what the groups are
+ * called, and which administrators have access.
+ */
+function SettingsForm({ settings, toast }) {
+  const [org, setOrg] = useState({
+    orgName: settings.orgName ?? '',
+    orgShort: settings.orgShort ?? '',
+    sport: settings.sport ?? '',
+    programmeName: settings.programmeName ?? 'Academic Support',
+    contactEmail: settings.contactEmail ?? '',
+  });
+  const [squads, setSquads] = useState(settings.squads?.length ? settings.squads : ['']);
+  const [admins, setAdmins] = useState(
+    settings.admins?.length ? settings.admins : [{ name: '', email: '' }],
+  );
+  const [busy, setBusy] = useState(false);
+  const setOrgField = (patch) => setOrg((o) => ({ ...o, ...patch }));
+
+  async function save() {
+    setBusy(true);
+    try {
+      await api.updateSettings({
+        ...org,
+        squads: squads.map((s) => s.trim()).filter(Boolean),
+        admins: admins.filter((a) => a.name.trim() || a.email.trim()),
+      });
+      queryClient.invalidateQueries({ queryKey: qk.settings() });
+      toast('Settings saved.');
+    } catch (e) {
+      toast(e.message || 'Could not save settings.', 'err');
+    }
+    setBusy(false);
+  }
+
+  return (
+    <>
+      <Card
+        title="Organisation"
+        sub="This platform is multi-tenant — configure it for your school and sporting code. These details brand the student onboarding and reports."
+      >
+        <div className="fld-row">
+          <label className="fld">
+            <span>Institution name</span>
+            <input
+              value={org.orgName}
+              onChange={(e) => setOrgField({ orgName: e.target.value })}
+              placeholder="e.g. University of Cape Town"
+            />
+          </label>
+          <label className="fld">
+            <span>Short name / initials</span>
+            <input
+              value={org.orgShort}
+              onChange={(e) => setOrgField({ orgShort: e.target.value })}
+              placeholder="e.g. UCT"
+            />
+          </label>
+        </div>
+        <div className="fld-row">
+          <label className="fld">
+            <span>Sport / code</span>
+            <input
+              value={org.sport}
+              onChange={(e) => setOrgField({ sport: e.target.value })}
+              placeholder="e.g. Rugby — 1st XV, or Cricket"
+            />
+          </label>
+          <label className="fld">
+            <span>Programme name</span>
+            <input
+              value={org.programmeName}
+              onChange={(e) => setOrgField({ programmeName: e.target.value })}
+              placeholder="Academic Support"
+            />
+          </label>
+          <label className="fld">
+            <span>Office contact email</span>
+            <input
+              type="email"
+              value={org.contactEmail}
+              onChange={(e) => setOrgField({ contactEmail: e.target.value })}
+              placeholder="academics@school.ac.za"
+            />
+          </label>
+        </div>
+      </Card>
+
+      <Card
+        title="Squads & groups"
+        sub="What the athlete groups are called — these differ by sport and club, so they’re yours to set."
+        action={
+          <Btn icon={Icon.Plus} onClick={() => setSquads((xs) => [...xs, ''])}>
+            Add group
+          </Btn>
+        }
+      >
+        <div className="settings-list">
+          {squads.map((s, i) => (
+            <div key={i} className="settings-row">
+              <input
+                value={s}
+                onChange={(e) => setSquads((xs) => xs.map((x, j) => (j === i ? e.target.value : x)))}
+                placeholder="e.g. 1st Team"
+              />
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Remove group"
+                onClick={() => setSquads((xs) => (xs.length === 1 ? xs : xs.filter((_, j) => j !== i)))}
+                disabled={squads.length === 1}
+              >
+                <Icon.X />
+              </button>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card
+        title="Administrators"
+        sub="The people who can sign in and run the programme. Add an administrator for each school or sporting code that shares this platform."
+        action={
+          <Btn icon={Icon.Plus} onClick={() => setAdmins((xs) => [...xs, { name: '', email: '' }])}>
+            Add administrator
+          </Btn>
+        }
+      >
+        <div className="settings-list">
+          {admins.map((a, i) => (
+            <div key={i} className="settings-row settings-row-admin">
+              <input
+                value={a.name}
+                onChange={(e) =>
+                  setAdmins((xs) => xs.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
+                }
+                placeholder="Name"
+              />
+              <input
+                type="email"
+                value={a.email}
+                onChange={(e) =>
+                  setAdmins((xs) => xs.map((x, j) => (j === i ? { ...x, email: e.target.value } : x)))
+                }
+                placeholder="email@school.ac.za"
+              />
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Remove administrator"
+                onClick={() => setAdmins((xs) => (xs.length === 1 ? xs : xs.filter((_, j) => j !== i)))}
+                disabled={admins.length === 1}
+              >
+                <Icon.X />
+              </button>
+            </div>
+          ))}
+        </div>
+        <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
+          In this demo, sign-in uses a shared password. In production each administrator signs in
+          with your institution’s single sign-on — this list controls who has access.
+        </p>
+      </Card>
+
+      <div className="settings-save">
+        <Btn tone="primary" icon={Icon.Check} onClick={save} disabled={busy}>
+          {busy ? 'Saving…' : 'Save changes'}
+        </Btn>
+      </div>
+    </>
   );
 }
 

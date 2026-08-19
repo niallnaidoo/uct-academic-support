@@ -23,10 +23,22 @@ function load() {
     checkIns: [],
     interventions: [],
     moduleProfiles: {},
+    settings: { ...DEFAULT_SETTINGS },
   };
   save(db);
   return db;
 }
+/** Organisation settings — makes the platform scalable across schools/sports. */
+export const DEFAULT_SETTINGS = {
+  orgName: 'University of Cape Town',
+  orgShort: 'UCT',
+  sport: 'Rugby — Ikey Tigers',
+  programmeName: 'Academic Support',
+  contactEmail: 'academics@ikeys.uct.ac.za',
+  squads: ['1st Team', 'U20s', 'Both', 'General'],
+  admins: [{ name: 'Programme Administrator', email: 'admin@ikeys.uct.ac.za' }],
+};
+
 /** Fill in any keys a persisted (older) db is missing. */
 function withDefaults(db) {
   db.athletes ??= [];
@@ -34,6 +46,12 @@ function withDefaults(db) {
   db.checkIns ??= [];
   db.interventions ??= [];
   db.moduleProfiles ??= {};
+  db.settings = { ...DEFAULT_SETTINGS, ...(db.settings ?? {}) };
+  // Every ADP plan needs a token so its no-password report link works — backfill
+  // any legacy plan created before tokens were minted for in-house completions.
+  for (const c of db.checkIns) {
+    if ((c.kind === 'adp' || c.planStatus) && !c.token) c.token = tokenStr();
+  }
   return db;
 }
 function save(db) {
@@ -102,6 +120,16 @@ export const deleteAthlete = (id) =>
     }),
   );
 
+/* ── Organisation settings ── */
+export const getSettings = () => ok(load().settings ?? DEFAULT_SETTINGS);
+export const updateSettings = (patch) =>
+  ok(
+    mutate((db) => {
+      db.settings = { ...DEFAULT_SETTINGS, ...(db.settings ?? {}), ...patch };
+      return db.settings;
+    }),
+  );
+
 /* ── Module profiles (shared, auto-populate) ──
  * Course-level detail a student captures once at onboarding — class times and
  * assessment dates — keyed by course code. The next student who registers the
@@ -161,7 +189,8 @@ export const submitOnboarding = (body) =>
         modules,
         facultyWarning: 'No',
         onboardedAt: now(),
-        consentAt: body.consent ? now() : undefined,
+        // Consent is implicit — academic support is part of the programme.
+        consentAt: now(),
       };
       const existing = db.athletes.find((a) => a.studentNumber === studentNumber);
       if (existing) {
@@ -220,7 +249,9 @@ export const createCheckIn = (body) =>
     mutate((db) => {
       const athlete = db.athletes.find((a) => a.id === body.athleteId);
       const id = uid('chk');
-      const token = body.planStatus === 'sent' ? tokenStr() : undefined;
+      // Every ADP plan (assigned OR completed in-house) gets a token so its
+      // no-password report link works for the student and mentor.
+      const token = body.planStatus === 'sent' || body.kind === 'adp' ? tokenStr() : undefined;
       const c = {
         id,
         studentNumber: String(body.studentNumber ?? '').trim().toUpperCase(),

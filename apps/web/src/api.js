@@ -14,6 +14,9 @@ export const createAthlete = (...a) => impl.createAthlete(...a);
 export const patchAthlete = (...a) => impl.patchAthlete(...a);
 export const deleteAthlete = (...a) => impl.deleteAthlete(...a);
 
+export const getSettings = (...a) => impl.getSettings(...a);
+export const updateSettings = (...a) => impl.updateSettings(...a);
+
 export const getModuleProfiles = (...a) => impl.getModuleProfiles(...a);
 export const submitOnboarding = (...a) => impl.submitOnboarding(...a);
 
