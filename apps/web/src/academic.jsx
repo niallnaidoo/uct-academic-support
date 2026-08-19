@@ -62,6 +62,7 @@ import {
   INTERVENTION_TYPE_META,
   interventionLabel,
   adpSummary,
+  buildGradebook,
 } from './academic-model.js';
 import {
   lookupCourse,
@@ -101,6 +102,11 @@ function reportLink(checkIn) {
   return `${window.location.origin}${import.meta.env.BASE_URL}#/report/${checkIn.id}?t=${checkIn.token}`;
 }
 
+/** The public, no-password gradebook link for a student to record their marks. */
+function gradesLinkFor(id, token) {
+  return `${window.location.origin}${import.meta.env.BASE_URL}#/grades/${id}?t=${token}`;
+}
+
 const RiskPill = ({ athlete }) => {
   const r = academicRisk(athlete);
   return <Pill tone={RISK_META[r].tone}>{RISK_META[r].label}</Pill>;
@@ -120,6 +126,10 @@ export function AcademicModule({ toast }) {
     queryFn: api.getInterventions,
   });
   const { data: settings } = useQuery({ queryKey: qk.settings(), queryFn: api.getSettings });
+  const { data: moduleProfiles = {} } = useQuery({
+    queryKey: qk.moduleProfiles(),
+    queryFn: api.getModuleProfiles,
+  });
   const squads = settings?.squads?.length ? settings.squads : SQUADS;
 
   const tabs = [
@@ -127,6 +137,7 @@ export function AcademicModule({ toast }) {
     { key: 'athletes', label: 'Athletes', badge: athletes.length || null },
     { key: 'tracker', label: 'Academic tracker' },
     { key: 'checkins', label: 'Academic development plans' },
+    { key: 'grades', label: 'Gradebook' },
     { key: 'mentors', label: 'Mentors', badge: mentors.length || null },
     { key: 'interventions', label: 'Interventions' },
     { key: 'settings', label: 'Settings' },
@@ -177,6 +188,9 @@ export function AcademicModule({ toast }) {
         <CheckInsTab athletes={athletes} checkIns={checkIns} mentors={mentors} toast={toast} />
       )}
       {tab === 'mentors' && <MentorsTab mentors={mentors} toast={toast} />}
+      {tab === 'grades' && (
+        <GradesTab athletes={athletes} profiles={moduleProfiles} toast={toast} />
+      )}
       {tab === 'interventions' && (
         <InterventionsTab athletes={athletes} interventions={interventions} toast={toast} />
       )}
@@ -3432,6 +3446,189 @@ function ReportShare({ checkIn }) {
         <Btn tone="primary" icon={Icon.Doc} onClick={copy}>
           {copied ? 'Copied!' : 'Copy report link'}
         </Btn>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════ Gradebook ═══════════════════════════════ */
+
+/**
+ * The admin's view of student marks: who has assessments due for a mark (the
+ * 3-weeks-after prompt), and a link to send each student so they can record
+ * them on the no-login gradebook page.
+ */
+function GradesTab({ athletes, profiles, toast }) {
+  const [dueOnly, setDueOnly] = useState(false);
+  const [linkModal, setLinkModal] = useState(null);
+
+  const rows = athletes
+    .map((a) => ({ a, gb: buildGradebook(a, profiles) }))
+    .filter((r) => r.gb.total > 0)
+    .sort((x, y) => y.gb.due - x.gb.due);
+  const withDue = rows.filter((r) => r.gb.due > 0);
+  const shown = dueOnly ? withDue : rows;
+
+  async function makeLink(a) {
+    const { token } = await api.createGradebookLink(a.id);
+    invAthletes();
+    return gradesLinkFor(a.id, token);
+  }
+  async function copyOne(a) {
+    try {
+      const link = await makeLink(a);
+      setLinkModal({ athlete: a, link });
+    } catch (e) {
+      toast(e.message || 'Could not generate the link.', 'err');
+    }
+  }
+  async function copyAllDue() {
+    try {
+      const lines = [];
+      for (const r of withDue) {
+        const link = await makeLink(r.a);
+        lines.push(`${r.a.firstName} ${r.a.lastName} — ${link}`);
+      }
+      await navigator.clipboard.writeText(lines.join('\n'));
+      toast(`Copied ${lines.length} gradebook link${lines.length === 1 ? '' : 's'}.`);
+    } catch (e) {
+      toast(e.message || 'Could not copy.', 'err');
+    }
+  }
+
+  return (
+    <>
+      {linkModal && (
+        <GradesLinkModal
+          athlete={linkModal.athlete}
+          link={linkModal.link}
+          onClose={() => setLinkModal(null)}
+          toast={toast}
+        />
+      )}
+      <Card
+        title="Gradebook"
+        sub={`Assessment dates come from onboarding and shared module records. Three weeks after each assessment, marks are usually out — students with results due are flagged so you can send them their gradebook link.`}
+        action={
+          withDue.length > 0 ? (
+            <Btn tone="primary" icon={Icon.Doc} onClick={copyAllDue}>
+              Copy links for all due ({withDue.length})
+            </Btn>
+          ) : null
+        }
+      >
+        {rows.length === 0 ? (
+          <EmptyState
+            icon={Icon.Form}
+            title="No assessments logged yet"
+            sub="Once students onboard with their assessment dates, their gradebooks appear here."
+          />
+        ) : (
+          <>
+            <div className="track-tally">
+              <span>
+                <Pill tone={withDue.length ? 'amber' : 'green'}>{withDue.length}</Pill> student
+                {withDue.length === 1 ? '' : 's'} with marks due
+              </span>
+              <button
+                type="button"
+                className={`gb-toggle ${dueOnly ? 'on' : ''}`}
+                onClick={() => setDueOnly((v) => !v)}
+              >
+                {dueOnly ? 'Show all' : 'Only marks due'}
+              </button>
+            </div>
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Modules</th>
+                  <th>Recorded</th>
+                  <th>Marks due</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map(({ a, gb }) => (
+                  <tr key={a.id}>
+                    <td>
+                      <strong>
+                        {a.firstName} {a.lastName}
+                      </strong>
+                      <div className="muted" style={{ fontSize: 12 }}>
+                        {a.studentNumber}
+                      </div>
+                    </td>
+                    <td>{gb.modules.length}</td>
+                    <td>
+                      {gb.recorded}
+                      <span className="muted"> / {gb.total}</span>
+                    </td>
+                    <td>
+                      {gb.due > 0 ? (
+                        <Pill tone="amber">{gb.due} due</Pill>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <Btn size="sm" icon={Icon.Mail} onClick={() => copyOne(a)}>
+                        Get link
+                      </Btn>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </Card>
+    </>
+  );
+}
+
+/** Shows one student's gradebook link — copy or email it to them. */
+function GradesLinkModal({ athlete, link, onClose, toast }) {
+  const name = `${athlete.firstName} ${athlete.lastName}`;
+  const subject = encodeURIComponent('Add your marks');
+  const body = encodeURIComponent(
+    `Hi ${athlete.firstName},\n\nYour results should be out — please add your marks to your gradebook. No login needed:\n\n${link}\n\nThanks.`,
+  );
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      toast('Gradebook link copied.');
+    } catch {
+      toast('Could not copy — select the link manually.', 'err');
+    }
+  };
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+        <div className="modal-head">
+          <div className="modal-title">Gradebook link — {name}</div>
+          <button className="icon-btn" onClick={onClose} aria-label="Close">
+            <Icon.X />
+          </button>
+        </div>
+        <div className="modal-body">
+          <p className="muted" style={{ fontSize: 13 }}>
+            Send this to {athlete.firstName} to record their marks — they open it with no login and
+            can update marks any time.
+          </p>
+          <label className="fld">
+            <span>Private gradebook link</span>
+            <input readOnly value={link} onFocus={(e) => e.target.select()} />
+          </label>
+          <div className="modal-foot">
+            <a className="btn btn-outline" href={`mailto:?subject=${subject}&body=${body}`}>
+              <Icon.Mail /> Email the student
+            </a>
+            <Btn tone="primary" icon={Icon.Doc} onClick={copy}>
+              Copy link
+            </Btn>
+          </div>
+        </div>
       </div>
     </div>
   );

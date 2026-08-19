@@ -43,6 +43,11 @@ standalone repo.
   four development areas rated 1–5 with tailored per-category descriptors, a
   **question bank** to draw the student out, and an **intervention plan** (tutor,
   SI, alumni mentor, referral, leave of absence…) logged to a register.
+- **Gradebook** — assessment dates captured at onboarding (or seeded from a
+  teammate who's taken the same module) drive a per-student **gradebook**. Three
+  weeks after each assessment, marks are usually out, so the student is prompted
+  to record them on a no-login page; the admin's Gradebook tab flags who has
+  marks due and generates each student's link (one, or all-due in bulk).
 - **Mentors** — a registry of external mentors (add one, or bulk-upload a CSV).
   Mentors never log in.
 - **Public mentor page** (`/#/mentor/:id?t=…`) — the external mentor opens their
@@ -115,6 +120,11 @@ single-table design, packaged for AWS Lambda via [SST](https://sst.dev).
   student and mentor (no auth), reusing the same `GET /mentor-plan/:id` handler.
   Mint the token when the plan is created (assigned *or* completed in-house), not
   only on assignment.
+- **Gradebook** — `POST /admin/academic/athletes/:id/gradebook-link` mints a
+  per-student token; public `GET`/`POST /gradebook/:id?t=<token>` read and write
+  the student's marks (no auth). The 3-week "marks due" prompt is pure client
+  logic in `academic-model.js` (`buildGradebook` / `assessmentStatus`,
+  `MARK_READY_DAYS`). Marks are stored keyed by `module|label|date`.
 - **Multi-tenant / scalable** — a Settings tab configures the organisation
   (institution, sport/code, programme name, squads, administrators) so the same
   platform serves any school or sporting code. In this demo it's one shared

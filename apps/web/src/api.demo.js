@@ -7,6 +7,7 @@
  * as it would be against the Hono backend — just with no server and no auth.
  */
 import { demoAthletes, demoMentors } from './demo-seed.js';
+import { buildGradebook } from './academic-model.js';
 
 const KEY = 'uct-academic-demo-v1';
 
@@ -326,6 +327,55 @@ export const deleteIntervention = (id) =>
     mutate((db) => {
       db.interventions = db.interventions.filter((iv) => iv.id !== id);
       return { ok: true };
+    }),
+  );
+
+/* ── Student gradebook (token-gated, no auth) ── */
+function resolveGradebook(id, token, db) {
+  const a = db.athletes.find((x) => x.id === id);
+  if (!a || !a.gradebookToken || a.gradebookToken !== token) throw new Error('this link is not valid');
+  return a;
+}
+/** Admin: mint (once) and return the student's gradebook link token. */
+export const createGradebookLink = (id) =>
+  ok(
+    mutate((db) => {
+      const a = db.athletes.find((x) => x.id === id);
+      if (!a) throw new Error('athlete not found');
+      if (!a.gradebookToken) a.gradebookToken = tokenStr();
+      return { id: a.id, token: a.gradebookToken, athleteName: `${a.firstName} ${a.lastName}` };
+    }),
+  );
+export const getGradebook = (id, token) => {
+  const db = load();
+  let a;
+  try {
+    a = resolveGradebook(id, token, db);
+  } catch (e) {
+    return Promise.reject(e);
+  }
+  const gb = buildGradebook(a, db.moduleProfiles ?? {});
+  return ok({
+    athleteName: `${a.firstName} ${a.lastName}`,
+    studentNumber: a.studentNumber,
+    faculty: a.faculty,
+    ...gb,
+  });
+};
+export const submitGrades = (id, token, body) =>
+  ok(
+    mutate((db) => {
+      const a = resolveGradebook(id, token, db);
+      a.grades = a.grades ?? {};
+      for (const g of body.grades ?? []) {
+        if (!g.key) continue;
+        if (g.mark === '' || g.mark == null) delete a.grades[g.key];
+        else a.grades[g.key] = Number(g.mark);
+      }
+      a.gradesUpdatedAt = now();
+      a.version = (a.version ?? 1) + 1;
+      const gb = buildGradebook(a, db.moduleProfiles ?? {});
+      return { ok: true, recorded: gb.recorded, total: gb.total };
     }),
   );
 

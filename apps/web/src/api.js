@@ -37,6 +37,10 @@ export const deleteIntervention = (...a) => impl.deleteIntervention(...a);
 export const getMentorPlan = (...a) => impl.getMentorPlan(...a);
 export const submitMentorPlan = (...a) => impl.submitMentorPlan(...a);
 
+export const createGradebookLink = (...a) => impl.createGradebookLink(...a);
+export const getGradebook = (...a) => impl.getGradebook(...a);
+export const submitGrades = (...a) => impl.submitGrades(...a);
+
 export const resetDemo = demo.resetDemo;
 /** No-op kept for compatibility with the shared query-key factory. */
 export function setActiveTenant() {}

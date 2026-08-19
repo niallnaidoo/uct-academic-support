@@ -1158,3 +1158,177 @@ a.btn {
   font-size: 12.5px;
   background: var(--paper);
 }
+
+/* ═══════════════════════════ Student gradebook ═══════════════════════════ */
+.gradebook-page {
+  padding-bottom: 70px;
+}
+.gb-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 1040px;
+  margin: 0 auto 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius-lg);
+  background: #fbf3df;
+  border: 1px solid var(--gold-warm);
+  color: #6b5518;
+  font-size: 13.5px;
+}
+.gb-prompt svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: var(--gold-warm);
+}
+.gb-prompt strong {
+  color: #5a4712;
+}
+.gb-card {
+  max-width: 1040px;
+  margin: 0 auto;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.gb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.gb-head strong {
+  font-size: 18px;
+}
+.gb-save-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.gb-saved {
+  color: var(--green-mid);
+  font-weight: 700;
+  font-size: 13px;
+}
+.gb-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.gradebook {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.gradebook th {
+  text-align: left;
+  padding: 11px 18px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+.gradebook td {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line2);
+  vertical-align: middle;
+}
+.gb-modrow td {
+  background: var(--paper2);
+  padding: 9px 18px;
+  font-size: 13px;
+}
+.gb-due {
+  background: #fdf7ea;
+}
+.gb-mark-col {
+  text-align: right;
+  width: 140px;
+}
+.gb-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  background: var(--white);
+}
+.gb-mark:focus-within {
+  border-color: var(--green-bright);
+}
+.gb-mark input {
+  width: 52px;
+  border: 0;
+  outline: none;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: right;
+  background: none;
+  color: var(--ink);
+}
+.gb-pct {
+  color: var(--muted);
+  font-weight: 700;
+}
+.gb-foot {
+  max-width: 1040px;
+  margin: 16px auto 0;
+  display: flex;
+  justify-content: flex-end;
+}
+/* Admin gradebook toggle */
+.gb-toggle {
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 99px;
+  cursor: pointer;
+  margin-left: auto;
+}
+.gb-toggle:hover,
+.gb-toggle.on {
+  border-color: var(--green-bright);
+  background: var(--green-pale);
+  color: var(--green);
+}
+/* On mobile, fold the date under the assessment so the mark input stays on-screen */
+.gb-date-sub {
+  display: none;
+}
+@media (max-width: 560px) {
+  .gb-date-col {
+    display: none;
+  }
+  .gb-date-sub {
+    display: block;
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .gradebook th,
+  .gradebook td {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .gradebook th.gb-date-col {
+    display: none;
+  }
+  .gb-mark-col {
+    width: 96px;
+  }
+  .gb-mark input {
+    width: 40px;
+  }
+}

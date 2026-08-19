@@ -35,6 +35,37 @@ const PROFILES = [
   null, // unassessed
 ];
 
+// A few real course codes + relative assessment dates so the gradebook demo has
+// content on first load: some marks already due (past 3 weeks), some awaiting,
+// some still upcoming. Dates are computed once, at seed time.
+const dayOffset = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+const DEMO_MODULE_CODES = ['ECO1010F', 'CSC1015F', 'MAM1000W', 'STA1000S', 'BUS1004F', 'PSY1004F'];
+function demoModulesFor(i) {
+  const c1 = DEMO_MODULE_CODES[i % DEMO_MODULE_CODES.length];
+  const c2 = DEMO_MODULE_CODES[(i + 3) % DEMO_MODULE_CODES.length];
+  return [
+    {
+      code: c1,
+      assessments: [
+        { label: 'Class Test 1', date: dayOffset(-32) }, // marks due
+        { label: 'Assignment 1', date: dayOffset(-9) }, // awaiting result
+        { label: 'Class Test 2', date: dayOffset(18) }, // upcoming
+      ],
+    },
+    {
+      code: c2,
+      assessments: [
+        { label: 'Tutorial Test', date: dayOffset(-40) }, // marks due
+        { label: 'Project', date: dayOffset(25) }, // upcoming
+      ],
+    },
+  ];
+}
+
 export function demoAthletes() {
   const out = [];
   for (let i = 0; i < 40; i++) {
@@ -56,6 +87,9 @@ export function demoAthletes() {
       yearOfStudy: YEARS_OF_STUDY[i % 4],
       creditsRegistered: credits,
       mentor: MENTORS_HINT[i % MENTORS_HINT.length] || undefined,
+      // Give the first dozen athletes real modules with assessment dates so the
+      // gradebook has content to demonstrate (the rest register their own).
+      ...(i < 12 ? { modules: demoModulesFor(i) } : {}),
       status: 'active',
       consentAt: i % 9 === 0 ? undefined : '2026-02-01T08:00:00.000Z',
       ...(p

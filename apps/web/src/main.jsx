@@ -17,6 +17,7 @@ import { AcademicModule } from './academic.jsx';
 import { MentorPlanPage } from './MentorPlanPage.jsx';
 import { StudentOnboardingPage } from './StudentOnboardingPage.jsx';
 import { ReportPage } from './ReportPage.jsx';
+import { StudentGradebookPage } from './StudentGradebookPage.jsx';
 import './app.css';
 
 const ADMIN_KEY = 'uct-academic-admin';
@@ -181,6 +182,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="/onboard" element={<StudentOnboardingPage />} />
           <Route path="/mentor/:id" element={<MentorPlanPage />} />
           <Route path="/report/:id" element={<ReportPage />} />
+          <Route path="/grades/:id" element={<StudentGradebookPage />} />
           <Route path="*" element={<AdminApp />} />
         </Routes>
       </HashRouter>

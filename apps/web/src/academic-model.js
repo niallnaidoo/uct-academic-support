@@ -1022,3 +1022,82 @@ export function adpSummary(checkIn) {
     interventions: plan.length,
   };
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Student gradebook
+ *
+ * Assessment dates are captured at onboarding (or seeded from any teammate who
+ * has taken the same module — the shared module profile). Three weeks after an
+ * assessment's date, marks are usually out, so the student is prompted to record
+ * theirs. The gradebook is the table where they add and update those marks.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/** Marks are usually released within three weeks — after that we prompt. */
+export const MARK_READY_DAYS = 21;
+
+export const GRADE_STATUS_META = {
+  recorded: { key: 'recorded', label: 'Recorded', tone: 'green' },
+  due: { key: 'due', label: 'Add your mark', tone: 'amber' },
+  awaiting: { key: 'awaiting', label: 'Awaiting result', tone: 'muted' },
+  upcoming: { key: 'upcoming', label: 'Upcoming', tone: 'muted' },
+};
+
+/** Stable identity for one assessment's mark: module + label + date. */
+export function gradeKey(code, label, date) {
+  return `${code ?? ''}|${label ?? ''}|${date ?? ''}`;
+}
+
+const hasMark = (mark) => mark != null && mark !== '' && !Number.isNaN(Number(mark));
+
+/**
+ * Where an assessment sits: already recorded, due for a mark (≥ 3 weeks past),
+ * done-but-awaiting (past, not yet 3 weeks), or still upcoming.
+ */
+export function assessmentStatus(date, mark, today = new Date()) {
+  if (hasMark(mark)) return GRADE_STATUS_META.recorded;
+  if (!date) return GRADE_STATUS_META.due; // no date — safe to ask for it now
+  const d = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return GRADE_STATUS_META.due;
+  const ready = new Date(d.getTime() + MARK_READY_DAYS * 86400000);
+  if (today < d) return GRADE_STATUS_META.upcoming;
+  if (today < ready) return GRADE_STATUS_META.awaiting;
+  return GRADE_STATUS_META.due;
+}
+
+/** Union a student's own assessments with the shared module-profile ones. */
+export function mergeAssessments(own, profile) {
+  const map = new Map();
+  for (const a of [...(profile ?? []), ...(own ?? [])]) {
+    if (!a || (!a.date && !a.label)) continue;
+    const key = `${a.label ?? ''}|${a.date ?? ''}`;
+    map.set(key, { label: a.label ?? '', date: a.date ?? '' });
+  }
+  return [...map.values()].sort((x, y) => String(x.date).localeCompare(String(y.date)));
+}
+
+/**
+ * The student's gradebook: every module they take, its assessments (own +
+ * shared), each with the mark they've recorded and a status. Counts drive the
+ * "you have marks to add" prompt.
+ */
+export function buildGradebook(athlete, profiles = {}, today = new Date()) {
+  const grades = athlete?.grades ?? {};
+  const modules = (athlete?.modules ?? [])
+    .map((m) => {
+      const merged = mergeAssessments(m.assessments, profiles[m.code]?.assessments);
+      const assessments = merged.map((a) => {
+        const key = gradeKey(m.code, a.label, a.date);
+        const mark = grades[key];
+        return { ...a, key, mark: hasMark(mark) ? Number(mark) : '', status: assessmentStatus(a.date, mark, today) };
+      });
+      return { code: m.code, name: m.name, assessments };
+    })
+    .filter((m) => m.assessments.length);
+  const all = modules.flatMap((m) => m.assessments);
+  return {
+    modules,
+    total: all.length,
+    recorded: all.filter((a) => a.status.key === 'recorded').length,
+    due: all.filter((a) => a.status.key === 'due').length,
+  };
+}
