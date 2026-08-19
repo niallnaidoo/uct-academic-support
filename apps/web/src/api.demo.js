@@ -53,6 +53,12 @@ function withDefaults(db) {
   for (const c of db.checkIns) {
     if ((c.kind === 'adp' || c.planStatus) && !c.token) c.token = tokenStr();
   }
+  // Seeded demo athletes get a stable gradebook token so their demo link works
+  // for any visitor (and for anyone who seeded before the token existed).
+  for (const a of db.athletes) {
+    const m = /^ath-demo-(\d+)$/.exec(a.id ?? '');
+    if (m && !a.gradebookToken && Number(m[1]) <= 12) a.gradebookToken = `demo-${m[1]}`;
+  }
   return db;
 }
 function save(db) {

@@ -88,8 +88,9 @@ export function demoAthletes() {
       creditsRegistered: credits,
       mentor: MENTORS_HINT[i % MENTORS_HINT.length] || undefined,
       // Give the first dozen athletes real modules with assessment dates so the
-      // gradebook has content to demonstrate (the rest register their own).
-      ...(i < 12 ? { modules: demoModulesFor(i) } : {}),
+      // gradebook has content to demonstrate (the rest register their own). A
+      // stable gradebook token means their demo link works for any visitor.
+      ...(i < 12 ? { modules: demoModulesFor(i), gradebookToken: `demo-${i + 1}` } : {}),
       status: 'active',
       consentAt: i % 9 === 0 ? undefined : '2026-02-01T08:00:00.000Z',
       ...(p
