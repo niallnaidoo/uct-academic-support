@@ -1303,6 +1303,53 @@ a.btn {
   background: var(--green-pale);
   color: var(--green);
 }
+/* Add-an-assessment row + form */
+.gb-add-row {
+  padding: 14px 18px;
+  border-top: 1px solid var(--line);
+}
+.gb-add-form {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  padding: 14px 16px;
+}
+.gb-add-title {
+  font-weight: 700;
+  font-size: 13.5px;
+  margin-bottom: 12px;
+}
+.gb-add-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.gb-add-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.gb-empty {
+  padding: 26px 18px;
+  text-align: center;
+}
+/* Thank-you tick on the completion card */
+.gb-thanks-tick {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--green-pale);
+  color: var(--green-mid);
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+}
+.gb-thanks-tick svg {
+  width: 26px;
+  height: 26px;
+}
+
 /* On mobile, fold the date under the assessment so the mark input stays on-screen */
 .gb-date-sub {
   display: none;

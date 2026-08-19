@@ -46,8 +46,10 @@ standalone repo.
 - **Gradebook** — assessment dates captured at onboarding (or seeded from a
   teammate who's taken the same module) drive a per-student **gradebook**. Three
   weeks after each assessment, marks are usually out, so the student is prompted
-  to record them on a no-login page; the admin's Gradebook tab flags who has
-  marks due and generates each student's link (one, or all-due in bulk).
+  to record them on a no-login page — where they can also **add their own
+  assessments** and, on submit, get a **thank-you** confirmation. The admin's
+  Gradebook tab flags who has marks due and generates each student's link (one,
+  or all-due in bulk).
 - **Mentors** — a registry of external mentors (add one, or bulk-upload a CSV).
   Mentors never log in.
 - **Public mentor page** (`/#/mentor/:id?t=…`) — the external mentor opens their

@@ -370,6 +370,7 @@ export const getGradebook = (id, token) => {
     athleteName: `${a.firstName} ${a.lastName}`,
     studentNumber: a.studentNumber,
     faculty: a.faculty,
+    allModules: (a.modules ?? []).map((m) => ({ code: m.code, name: m.name })),
     ...gb,
   });
 };
@@ -377,6 +378,22 @@ export const submitGrades = (id, token, body) =>
   ok(
     mutate((db) => {
       const a = resolveGradebook(id, token, db);
+      a.modules = a.modules ?? [];
+      // Assessments the student added themselves — fold into their module record.
+      for (const na of body.newAssessments ?? []) {
+        const code = String(na.code ?? '').trim().toUpperCase();
+        if (!code || (!na.label && !na.date)) continue;
+        let mod = a.modules.find((m) => m.code === code);
+        if (!mod) {
+          mod = { code, assessments: [] };
+          a.modules.push(mod);
+        }
+        mod.assessments = mod.assessments ?? [];
+        const dup = mod.assessments.some(
+          (x) => (x.label ?? '') === (na.label ?? '') && (x.date ?? '') === (na.date ?? ''),
+        );
+        if (!dup) mod.assessments.push({ label: na.label ?? '', date: na.date ?? '' });
+      }
       a.grades = a.grades ?? {};
       for (const g of body.grades ?? []) {
         if (!g.key) continue;
