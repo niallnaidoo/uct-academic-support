@@ -43,6 +43,13 @@ export const patchAthlete = (id, patch) =>
   req(`/admin/academic/athletes/${id}`, { method: 'PATCH', body: patch });
 export const deleteAthlete = (id) => req(`/admin/academic/athletes/${id}`, { method: 'DELETE' });
 
+// Module profiles power the onboarding auto-populate. `getModuleProfiles` is admin
+// (the roster view); onboarding submission is public (the student's link is the
+// credential). Endpoints for the dev team to add server-side; see README.
+export const getModuleProfiles = () => req('/admin/academic/module-profiles');
+export const submitOnboarding = (body) =>
+  req('/onboarding', { method: 'POST', body, auth: false });
+
 export const getMentors = () => req('/admin/academic/mentors');
 export const createMentor = (body) => req('/admin/academic/mentors', { method: 'POST', body });
 export const patchMentor = (id, patch) =>

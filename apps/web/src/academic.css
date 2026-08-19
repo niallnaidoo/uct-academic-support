@@ -520,3 +520,306 @@ a.btn {
   font-size: 12px;
   margin-top: 1px;
 }
+
+/* ── Rating: 1–5 number picker (replaces the slider) ── */
+.adp-nums {
+  display: flex;
+  gap: 8px;
+}
+.adp-num {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  background: var(--white);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    transform 0.06s ease,
+    border-color 0.1s,
+    background 0.1s,
+    color 0.1s;
+}
+.adp-num:hover {
+  border-color: var(--muted-2);
+  color: var(--ink);
+}
+.adp-num.on {
+  color: #fff;
+  border-color: transparent;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(10, 15, 20, 0.16);
+}
+.adp-num.tone-green.on {
+  background: var(--green-bright);
+}
+.adp-num.tone-amber.on {
+  background: var(--gold-warm);
+}
+.adp-num.tone-red.on {
+  background: var(--coral);
+}
+@media (max-width: 560px) {
+  .adp-num {
+    width: 15vw;
+    height: 15vw;
+    max-width: 46px;
+    max-height: 46px;
+  }
+}
+
+/* Card header with more than one action */
+.card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Assign-plan: searchable multi-select ── */
+.fld-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.assign-count {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--green-mid);
+}
+.assign-search {
+  max-width: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  background: var(--white);
+}
+.assign-selall {
+  margin: 8px 0 0;
+  border: 0;
+  background: transparent;
+  color: var(--green-mid);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+.assign-selall:hover {
+  text-decoration: underline;
+}
+.assign-list {
+  margin-top: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+.assign-empty {
+  padding: 18px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+.assign-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line2);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.assign-row:last-child {
+  border-bottom: 0;
+}
+.assign-row:hover {
+  background: var(--white);
+}
+.assign-row.on {
+  background: var(--green-pale);
+}
+.assign-check {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid var(--muted-3);
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+.assign-check.on {
+  background: var(--green-bright);
+  border-color: var(--green-bright);
+}
+.assign-check svg {
+  width: 13px;
+  height: 13px;
+}
+.assign-row-main {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+}
+.assign-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  flex: 0 0 auto;
+}
+
+/* ── Bulk links after a bulk send ── */
+.bulk-list {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin: 4px 0 6px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.bulk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--line2);
+  font-size: 13.5px;
+}
+.bulk-row:last-child {
+  border-bottom: 0;
+}
+
+/* ── Student onboarding page ── */
+.onboard-page {
+  padding-bottom: 60px;
+}
+.onboard-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.onboard-modules {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.onboard-mod {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  padding: 14px 16px;
+}
+.onboard-mod-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.onboard-mod-n {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--green-pale);
+  color: var(--green-mid);
+  font-size: 12px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+}
+.onboard-mod-body {
+  margin-top: 12px;
+  display: grid;
+  gap: 14px;
+}
+.onboard-assess-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+}
+.onboard-assess-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.onboard-assess-name {
+  flex: 1;
+  min-width: 0;
+}
+.onboard-assess-date {
+  flex: 0 0 auto;
+  width: 160px;
+}
+.onboard-assess input {
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 13px;
+  background: var(--white);
+}
+.onboard-add-assess {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px dashed var(--muted-3);
+  background: transparent;
+  color: var(--green-mid);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 99px;
+  cursor: pointer;
+}
+.onboard-add-assess:hover {
+  border-color: var(--green-bright);
+  background: var(--green-pale);
+}
+.onboard-add-assess svg {
+  width: 12px;
+  height: 12px;
+}
+.onboard-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.4;
+}
+.onboard-consent input {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+.onboard-foot {
+  display: flex;
+  justify-content: flex-end;
+}
+@media (max-width: 560px) {
+  .onboard-assess-row {
+    flex-wrap: wrap;
+  }
+  .onboard-assess-date {
+    width: 100%;
+  }
+}

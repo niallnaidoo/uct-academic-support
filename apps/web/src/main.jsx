@@ -1,9 +1,10 @@
 /**
  * UCT Academic Support — standalone app shell.
  *
- * Two routes: the admin module (roster, tracker, development plans, mentors,
- * interventions, dashboard) and the public /mentor/:id completion page. Uses a
- * HashRouter so deep mentor links survive a static GitHub Pages host.
+ * Routes: the admin module (behind a login — only administrators use the
+ * platform), the public student onboarding link (/onboard), and the public
+ * mentor completion link (/mentor/:id). A HashRouter keeps deep links working on
+ * a static GitHub Pages host.
  */
 import { StrictMode, useState, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -13,7 +14,12 @@ import { queryClient } from './query.js';
 import { IS_DEMO, resetDemo } from './api.js';
 import { AcademicModule } from './academic.jsx';
 import { MentorPlanPage } from './MentorPlanPage.jsx';
+import { StudentOnboardingPage } from './StudentOnboardingPage.jsx';
 import './app.css';
+
+const ADMIN_KEY = 'uct-academic-admin';
+/** Demo access — a stand-in for the real Cognito sign-in the dev team wires up. */
+const DEMO_PASSWORD = 'ikeys';
 
 function useToasts() {
   const [items, setItems] = useState([]);
@@ -34,8 +40,90 @@ function useToasts() {
   return [toast, node];
 }
 
+/** Administrator sign-in. Only administrators reach the platform. */
+function AdminLogin({ onAuthed }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+
+  function submit(e) {
+    e.preventDefault();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+      return setError('Enter a valid email address.');
+    if (IS_DEMO ? password !== DEMO_PASSWORD : !password)
+      return setError('That password is not correct.');
+    try {
+      localStorage.setItem(ADMIN_KEY, JSON.stringify({ email: email.trim(), at: Date.now() }));
+    } catch {
+      /* private mode — session-only is fine */
+    }
+    onAuthed(email.trim());
+  }
+
+  return (
+    <div className="login-page">
+      <form className="login-card" onSubmit={submit}>
+        <div className="login-brand">
+          <span className="login-mark">UCT</span>
+          <div>
+            <div className="login-title">Academic Support</div>
+            <div className="login-sub">Administrator sign-in</div>
+          </div>
+        </div>
+        <label className="fld">
+          <span>Email</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@ikeys.uct.ac.za"
+            autoFocus
+          />
+        </label>
+        <label className="fld">
+          <span>Password</span>
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        </label>
+        {error && (
+          <div className="form-error" role="alert">
+            {error}
+          </div>
+        )}
+        <button className="btn btn-primary login-btn" type="submit">
+          Sign in
+        </button>
+        {IS_DEMO && (
+          <p className="login-demo">
+            Demo access — any email, password <code>{DEMO_PASSWORD}</code>. Production wires UCT
+            single sign-on.
+          </p>
+        )}
+      </form>
+    </div>
+  );
+}
+
 function AdminApp() {
   const [toast, toastNode] = useToasts();
+  const [authed, setAuthed] = useState(() => {
+    try {
+      return !!localStorage.getItem(ADMIN_KEY);
+    } catch {
+      return false;
+    }
+  });
+
+  if (!authed) return <AdminLogin onAuthed={() => setAuthed(true)} />;
+
+  function signOut() {
+    try {
+      localStorage.removeItem(ADMIN_KEY);
+    } catch {
+      /* ignore */
+    }
+    setAuthed(false);
+  }
+
   return (
     <div className="app-shell">
       <header className="app-bar">
@@ -43,22 +131,27 @@ function AdminApp() {
           UCT Academic Support
           <span className="app-brand-sub">Student-athlete academic tracking</span>
         </div>
-        {IS_DEMO && (
-          <div className="demo-flag">
-            Demo — data is stored in your browser
-            <button
-              className="demo-reset"
-              onClick={() => {
-                if (window.confirm('Reset the demo to its seeded data?')) {
-                  resetDemo();
-                  window.location.reload();
-                }
-              }}
-            >
-              Reset
-            </button>
-          </div>
-        )}
+        <div className="app-bar-right">
+          {IS_DEMO && (
+            <div className="demo-flag">
+              Demo — data is stored in your browser
+              <button
+                className="demo-reset"
+                onClick={() => {
+                  if (window.confirm('Reset the demo to its seeded data?')) {
+                    resetDemo();
+                    window.location.reload();
+                  }
+                }}
+              >
+                Reset
+              </button>
+            </div>
+          )}
+          <button className="app-signout" onClick={signOut}>
+            Sign out
+          </button>
+        </div>
       </header>
       <main className="main app-main">
         <AcademicModule toast={toast} />
@@ -73,6 +166,7 @@ createRoot(document.getElementById('root')).render(
     <QueryClientProvider client={queryClient}>
       <HashRouter>
         <Routes>
+          <Route path="/onboard" element={<StudentOnboardingPage />} />
           <Route path="/mentor/:id" element={<MentorPlanPage />} />
           <Route path="*" element={<AdminApp />} />
         </Routes>

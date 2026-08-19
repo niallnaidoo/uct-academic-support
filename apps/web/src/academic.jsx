@@ -91,6 +91,11 @@ function mentorLink(checkIn) {
   return `${window.location.origin}${import.meta.env.BASE_URL}#/mentor/${checkIn.id}?t=${checkIn.token}`;
 }
 
+/** The public student self-onboarding link (hash-routed, no token — link only). */
+function onboardLink() {
+  return `${window.location.origin}${import.meta.env.BASE_URL}#/onboard`;
+}
+
 const RiskPill = ({ athlete }) => {
   const r = academicRisk(athlete);
   return <Pill tone={RISK_META[r].tone}>{RISK_META[r].label}</Pill>;
@@ -203,66 +208,6 @@ function DashboardTab({ athletes, interventions, checkIns, onOpen }) {
             { value: summary.unassessed, tone: 'muted', label: 'Not assessed' },
           ]}
         />
-      </Card>
-
-      <Card
-        title="Development plans"
-        sub={
-          dp.plans
-            ? 'How the squad sits across the four development areas, pooled from every plan run.'
-            : 'A summary of the academic development plans will appear here once you run the first one.'
-        }
-      >
-        {dp.plans === 0 ? (
-          <EmptyState
-            icon={Icon.Form}
-            title="No development plans yet"
-            sub="Build one from the Development plans tab to start tracking the squad’s areas."
-          />
-        ) : (
-          <>
-            <div className="kpi-row">
-              <KPI label="Plans run" num={dp.plans} sub={`${dp.athletes} athletes`} />
-              <KPI
-                label="Overall"
-                num={dp.meanBand ? dp.meanBand.tag : '—'}
-                sub={dp.mean ? `avg ${dp.mean.toFixed(1)} / 5` : 'not yet rated'}
-                tone={dp.meanBand && dp.meanBand.tone !== 'green' ? 'amber' : ''}
-              />
-              <KPI label="Flagged modules" num={dp.flaggedModules} />
-              <KPI label="Interventions planned" num={dp.interventions} />
-            </div>
-            <div className="dash-radar-row">
-              <RadarChart axes={dp.axes} />
-              <div className="dash-radar-side">
-                {dp.weakest && (
-                  <div className="dash-callout">
-                    <span className="dash-callout-l">Weakest area</span>
-                    <span className="dash-callout-v t-red">
-                      {dp.weakest.title} · {dp.weakest.value.toFixed(1)}
-                    </span>
-                  </div>
-                )}
-                {dp.strongest && dp.strongest !== dp.weakest && (
-                  <div className="dash-callout">
-                    <span className="dash-callout-l">Strongest area</span>
-                    <span className="dash-callout-v t-green">
-                      {dp.strongest.title} · {dp.strongest.value.toFixed(1)}
-                    </span>
-                  </div>
-                )}
-                {dp.followUps > 0 && (
-                  <div className="dash-callout">
-                    <span className="dash-callout-l">Need follow-up</span>
-                    <span className="dash-callout-v">
-                      {dp.followUps} plan{dp.followUps === 1 ? '' : 's'}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
       </Card>
 
       <div className="kpi-row">
@@ -433,6 +378,66 @@ function DashboardTab({ athletes, interventions, checkIns, onOpen }) {
           </table>
         </Card>
       )}
+
+      <Card
+        title="Academic development plans"
+        sub={
+          dp.plans
+            ? 'How the squad sits across the four development areas, pooled from every plan run.'
+            : 'A summary of the academic development plans will appear here once you run the first one.'
+        }
+      >
+        {dp.plans === 0 ? (
+          <EmptyState
+            icon={Icon.Form}
+            title="No development plans yet"
+            sub="Build one from the Academic development plans tab to start tracking the squad’s areas."
+          />
+        ) : (
+          <>
+            <div className="kpi-row">
+              <KPI label="Plans run" num={dp.plans} sub={`${dp.athletes} athletes`} />
+              <KPI
+                label="Overall"
+                num={dp.meanBand ? dp.meanBand.tag : '—'}
+                sub={dp.mean ? `avg ${dp.mean.toFixed(1)} / 5` : 'not yet rated'}
+                tone={dp.meanBand && dp.meanBand.tone !== 'green' ? 'amber' : ''}
+              />
+              <KPI label="Flagged modules" num={dp.flaggedModules} />
+              <KPI label="Interventions planned" num={dp.interventions} />
+            </div>
+            <div className="dash-radar-row">
+              <RadarChart axes={dp.axes} />
+              <div className="dash-radar-side">
+                {dp.weakest && (
+                  <div className="dash-callout">
+                    <span className="dash-callout-l">Weakest area</span>
+                    <span className="dash-callout-v t-red">
+                      {dp.weakest.title} · {dp.weakest.value.toFixed(1)}
+                    </span>
+                  </div>
+                )}
+                {dp.strongest && dp.strongest !== dp.weakest && (
+                  <div className="dash-callout">
+                    <span className="dash-callout-l">Strongest area</span>
+                    <span className="dash-callout-v t-green">
+                      {dp.strongest.title} · {dp.strongest.value.toFixed(1)}
+                    </span>
+                  </div>
+                )}
+                {dp.followUps > 0 && (
+                  <div className="dash-callout">
+                    <span className="dash-callout-l">Need follow-up</span>
+                    <span className="dash-callout-v">
+                      {dp.followUps} plan{dp.followUps === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </Card>
     </>
   );
 }
@@ -441,6 +446,7 @@ function DashboardTab({ athletes, interventions, checkIns, onOpen }) {
 
 function AthletesTab({ athletes, toast, onOpen }) {
   const [adding, setAdding] = useState(false);
+  const [onboarding, setOnboarding] = useState(false);
   const [squad, setSquad] = useState('all');
   const [faculty, setFaculty] = useState('all');
   const [risk, setRisk] = useState('all');
@@ -460,13 +466,19 @@ function AthletesTab({ athletes, toast, onOpen }) {
   return (
     <>
       {adding && <AthleteForm onClose={() => setAdding(false)} toast={toast} />}
+      {onboarding && <OnboardLinkModal onClose={() => setOnboarding(false)} toast={toast} />}
       <Card
         title="Student-athletes"
         sub="The academic Player Database — one row per athlete on the programme."
         action={
-          <Btn tone="primary" icon={Icon.Plus} onClick={() => setAdding(true)}>
-            Add athlete
-          </Btn>
+          <div className="card-actions">
+            <Btn icon={Icon.Mail} onClick={() => setOnboarding(true)}>
+              Onboard students
+            </Btn>
+            <Btn tone="primary" icon={Icon.Plus} onClick={() => setAdding(true)}>
+              Add athlete
+            </Btn>
+          </div>
         }
       >
         <div className="roster-head">
@@ -594,6 +606,59 @@ function AthletesTab({ athletes, toast, onOpen }) {
         )}
       </Card>
     </>
+  );
+}
+
+/** The link-only student onboarding invite — copy or email the self-serve link. */
+function OnboardLinkModal({ onClose, toast }) {
+  const link = onboardLink();
+  const subject = encodeURIComponent('Register for academic support');
+  const body = encodeURIComponent(
+    `Hi,\n\nPlease register for the academic support programme — it takes about two minutes and needs no login.\n\nOpen your link, add your details and the modules you're taking this semester:\n\n${link}\n\nThanks.`,
+  );
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      toast('Onboarding link copied.');
+    } catch {
+      toast('Could not copy — select and copy the link manually.', 'err');
+    }
+  };
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+        <div className="modal-head">
+          <div className="modal-title">Onboard students</div>
+          <button className="icon-btn" onClick={onClose} aria-label="Close">
+            <Icon.X />
+          </button>
+        </div>
+        <div className="modal-body">
+          <p className="muted" style={{ fontSize: 13 }}>
+            Students register themselves through this link — no account needed. They add their
+            details and screen their modules; each module’s class times and assessment dates are
+            saved and <strong>auto-fill for the next student</strong> taking the same course. New
+            registrations appear here on the roster.
+          </p>
+          <label className="fld">
+            <span>Shareable onboarding link</span>
+            <input readOnly value={link} onFocus={(e) => e.target.select()} />
+          </label>
+          <div className="modal-foot">
+            <a className="btn btn-outline" href={`mailto:?subject=${subject}&body=${body}`}>
+              <Icon.Mail /> Email a student
+            </a>
+            <Btn tone="primary" icon={Icon.Doc} onClick={copy}>
+              Copy link
+            </Btn>
+          </div>
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>
+            Share it once — post it in the squad group, or email individual students. The same link
+            works for everyone.
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1304,7 +1369,8 @@ function CheckInsTab({ athletes, checkIns, mentors, toast }) {
   const [assigning, setAssigning] = useState(false);
   const [openPlan, setOpenPlan] = useState(null);
   const [linkFor, setLinkFor] = useState(null);
-  // Admin in-house completion: { athlete, checkIn } → renders the wizard.
+  const [bulkLinks, setBulkLinks] = useState(null);
+  // Admin in-house completion: { athlete, period, modules } → renders the wizard.
   const [completing, setCompleting] = useState(null);
 
   // Only the latest plan per athlete drives the tracking view; legacy check-ins
@@ -1357,6 +1423,7 @@ function CheckInsTab({ athletes, checkIns, mentors, toast }) {
       <AdpWizard
         athlete={completing.athlete}
         period={completing.period}
+        initial={completing.modules?.length ? { modules: completing.modules } : undefined}
         onSubmit={adminComplete}
         onClose={() => setCompleting(null)}
       />
@@ -1371,15 +1438,19 @@ function CheckInsTab({ athletes, checkIns, mentors, toast }) {
       {linkFor && (
         <MentorLinkModal checkIn={linkFor} onClose={() => setLinkFor(null)} toast={toast} />
       )}
+      {bulkLinks && (
+        <BulkLinksModal checkIns={bulkLinks} onClose={() => setBulkLinks(null)} toast={toast} />
+      )}
       {assigning && (
         <AssignPlanModal
           athletes={athletes}
           mentors={mentors}
           toast={toast}
           onClose={() => setAssigning(false)}
-          onAssigned={(checkIn) => {
+          onAssigned={(created) => {
             setAssigning(false);
-            setLinkFor(checkIn);
+            if (created.length === 1) setLinkFor(created[0]);
+            else setBulkLinks(created);
           }}
           onCompleteNow={(ctx) => {
             setAssigning(false);
@@ -1494,8 +1565,34 @@ function CheckInsTab({ athletes, checkIns, mentors, toast }) {
 
 /* ───────────────────── Assign a plan to a mentor + link ──────────────────── */
 
+/**
+ * Seed a plan's screener with the modules the student captured at onboarding, so
+ * the mentor opens the plan with the module list already there and only has to
+ * triage which ones to focus on. Difficulty pre-answers from the catalogue.
+ */
+function seedPlanModules(athlete) {
+  return (athlete?.modules ?? [])
+    .filter((m) => String(m.code ?? '').trim())
+    .map((m) => ({
+      code: String(m.code).trim().toUpperCase(),
+      name: m.name,
+      convener: m.convener,
+      credits: m.credits,
+      faculty: m.faculty,
+      nqf: m.nqf,
+      difficulty: m.difficulty,
+      screener: m.difficulty ? { difficulty: DIFFICULTY_META[m.difficulty]?.screener } : {},
+    }));
+}
+
+/**
+ * New development plan — search and multi-select students, pick one mentor, and
+ * bulk-send them all a private link in one go. A single selection can also be
+ * completed in-house.
+ */
 function AssignPlanModal({ athletes, mentors, toast, onClose, onAssigned, onCompleteNow }) {
-  const [athleteId, setAthleteId] = useState(athletes[0]?.id ?? '');
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState(() => new Set());
   const [mentorId, setMentorId] = useState(mentors[0]?.id ?? '__new');
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -1504,58 +1601,91 @@ function AssignPlanModal({ athletes, mentors, toast, onClose, onAssigned, onComp
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
-  const athlete = athletes.find((a) => a.id === athleteId);
   const period = semesterOf(sessionDate).label;
   const isNew = mentorId === '__new';
   const chosen = mentors.find((m) => m.id === mentorId);
   const mentorName = isNew ? newName.trim() : (chosen?.name ?? '');
   const mentorEmail = isNew ? newEmail.trim() : (chosen?.email ?? '');
 
-  function validate() {
-    if (!athlete) return 'Choose an athlete.';
+  const q = query.trim().toLowerCase();
+  const shown = athletes.filter((a) =>
+    !q ? true : `${a.firstName} ${a.lastName} ${a.studentNumber}`.toLowerCase().includes(q),
+  );
+  const selectedList = athletes.filter((a) => selected.has(a.id));
+
+  const toggle = (id) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const allShownSelected = shown.length > 0 && shown.every((a) => selected.has(a.id));
+  const toggleAllShown = () =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (allShownSelected) shown.forEach((a) => next.delete(a.id));
+      else shown.forEach((a) => next.add(a.id));
+      return next;
+    });
+
+  function mentorOk() {
     if (!mentorName) return 'Choose or name a mentor.';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mentorEmail)) return 'A valid mentor email is required.';
     return null;
   }
 
   async function assign() {
-    const invalid = validate();
-    if (invalid) return setError(invalid);
+    if (selected.size === 0) return setError('Select at least one student.');
+    const bad = mentorOk();
+    if (bad) return setError(bad);
     setBusy(true);
     setError(null);
     try {
-      const created = await api.createCheckIn({
-        athleteId,
-        studentNumber: athlete.studentNumber,
-        athleteName: `${athlete.firstName} ${athlete.lastName}`,
-        mentor: mentorName,
-        mentorEmail,
-        planStatus: 'sent',
-        period,
-        date: sessionDate,
-        scheduledNext: nextSession || undefined,
-        kind: ADP_KIND,
-        answers: {},
-        followUpRequired: 'No',
-      });
+      const created = [];
+      for (const a of selectedList) {
+        const c = await api.createCheckIn({
+          athleteId: a.id,
+          studentNumber: a.studentNumber,
+          athleteName: `${a.firstName} ${a.lastName}`,
+          mentor: mentorName,
+          mentorEmail,
+          planStatus: 'sent',
+          period,
+          date: sessionDate,
+          scheduledNext: nextSession || undefined,
+          kind: ADP_KIND,
+          modules: seedPlanModules(a),
+          answers: {},
+          followUpRequired: 'No',
+        });
+        created.push(c);
+      }
       invCheckIns();
-      toast('Plan created — share the link with the mentor.');
+      toast(
+        created.length === 1
+          ? 'Plan created — share the link with the mentor.'
+          : `${created.length} plans created for ${mentorName}.`,
+      );
       onAssigned(created);
     } catch (err) {
-      setError(err.message || 'Could not create the plan.');
+      setError(err.message || 'Could not create the plans.');
       setBusy(false);
     }
   }
 
   function completeNow() {
-    const invalid = validate();
-    if (invalid) return setError(invalid);
-    onCompleteNow({ athlete, period, mentorName, mentorEmail });
+    if (selected.size !== 1)
+      return setError('Complete in-house works on one student at a time.');
+    const bad = mentorOk();
+    if (bad) return setError(bad);
+    const a = selectedList[0];
+    onCompleteNow({ athlete: a, period, mentorName, mentorEmail, modules: seedPlanModules(a) });
   }
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
         <div className="modal-head">
           <div className="modal-title">New development plan</div>
           <button className="icon-btn" onClick={onClose} aria-label="Close">
@@ -1563,19 +1693,67 @@ function AssignPlanModal({ athletes, mentors, toast, onClose, onAssigned, onComp
           </button>
         </div>
         <div className="modal-body">
-          <label className="fld">
-            <span>Student-athlete</span>
-            <select value={athleteId} onChange={(e) => setAthleteId(e.target.value)}>
-              {athletes.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.firstName} {a.lastName} · {a.studentNumber}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="fld">
+            <span className="fld-label-row">
+              <span>Students</span>
+              <span className="assign-count">
+                {selected.size} selected{selected.size > 1 ? ' — bulk send' : ''}
+              </span>
+            </span>
+            <div className="roster-search assign-search">
+              <Icon.Eye />
+              <input
+                placeholder="Search name or student number…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
+            {shown.length > 0 && (
+              <button type="button" className="assign-selall" onClick={toggleAllShown}>
+                {allShownSelected ? 'Clear' : `Select all ${q ? 'matching' : ''}`.trim()} (
+                {shown.length})
+              </button>
+            )}
+            <div className="assign-list">
+              {shown.length === 0 ? (
+                <div className="assign-empty">No students match “{query}”.</div>
+              ) : (
+                shown.map((a) => {
+                  const on = selected.has(a.id);
+                  const mods = a.modules?.length ?? 0;
+                  const r = academicRisk(a);
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      className={`assign-row ${on ? 'on' : ''}`}
+                      onClick={() => toggle(a.id)}
+                      role="checkbox"
+                      aria-checked={on}
+                    >
+                      <span className={`assign-check ${on ? 'on' : ''}`}>
+                        {on ? <Icon.Check /> : null}
+                      </span>
+                      <span className="assign-row-main">
+                        <strong>
+                          {a.firstName} {a.lastName}
+                        </strong>
+                        <span className="muted"> · {a.studentNumber}</span>
+                      </span>
+                      <span className="assign-row-meta">
+                        {mods > 0 && <span className="muted">{mods} modules</span>}
+                        <Pill tone={RISK_META[r].tone}>{RISK_META[r].label}</Pill>
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
 
           <label className="fld">
-            <span>Mentor</span>
+            <span>Mentor — the whole selection goes to this one mentor</span>
             <select value={mentorId} onChange={(e) => setMentorId(e.target.value)}>
               {mentors.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -1589,7 +1767,7 @@ function AssignPlanModal({ athletes, mentors, toast, onClose, onAssigned, onComp
             <div className="fld-row">
               <label className="fld">
                 <span>Mentor name</span>
-                <input value={newName} onChange={(e) => setNewName(e.target.value)} autoFocus />
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} />
               </label>
               <label className="fld">
                 <span>Mentor email</span>
@@ -1627,8 +1805,9 @@ function AssignPlanModal({ athletes, mentors, toast, onClose, onAssigned, onComp
           </div>
 
           <p className="muted" style={{ fontSize: 12.5 }}>
-            The mentor gets a private link to complete the plan for this athlete — they don’t need a
-            login. Or complete it in-house yourself.
+            Each mentor gets a private link to complete the plan with the student — no login. Their
+            screener is pre-filled with the student’s registered modules. Or complete one in-house
+            yourself.
           </p>
 
           {error && (
@@ -1637,11 +1816,15 @@ function AssignPlanModal({ athletes, mentors, toast, onClose, onAssigned, onComp
             </div>
           )}
           <div className="modal-foot">
-            <Btn type="button" onClick={completeNow}>
+            <Btn type="button" onClick={completeNow} disabled={selected.size !== 1}>
               Complete in-house
             </Btn>
-            <Btn tone="primary" icon={Icon.Mail} onClick={assign} disabled={busy}>
-              {busy ? 'Creating…' : 'Create & get link'}
+            <Btn tone="primary" icon={Icon.Mail} onClick={assign} disabled={busy || selected.size === 0}>
+              {busy
+                ? 'Creating…'
+                : selected.size > 1
+                  ? `Create ${selected.size} & get links`
+                  : 'Create & get link'}
             </Btn>
           </div>
         </div>
@@ -1701,6 +1884,85 @@ function MentorLinkModal({ checkIn, onClose, toast }) {
             Automated email delivery is wired on deploy (AWS SES, af-south-1); for now, copy the
             link or use your own mail client.
           </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** After a bulk send: every student's private link for the one mentor, at once. */
+function BulkLinksModal({ checkIns, onClose, toast }) {
+  const mentor = checkIns[0]?.mentor;
+  const mentorEmail = checkIns[0]?.mentorEmail ?? '';
+  const lines = checkIns.map((c) => `${c.athleteName} — ${mentorLink(c)}`);
+  const copyAll = async () => {
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      toast('All links copied.');
+    } catch {
+      toast('Could not copy — select the links manually.', 'err');
+    }
+  };
+  const subject = encodeURIComponent(`Academic development plans — ${checkIns.length} students`);
+  const body = encodeURIComponent(
+    `Hi ${mentor ?? 'there'},\n\n` +
+      `Please complete the academic development plans for the following students. ` +
+      `Each link opens their own plan — no login needed:\n\n` +
+      checkIns.map((c) => `${c.athleteName} (${c.period ?? ''}):\n${mentorLink(c)}`).join('\n\n') +
+      `\n\nThank you.`,
+  );
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
+        <div className="modal-head">
+          <div className="modal-title">
+            {checkIns.length} links for {mentor}
+          </div>
+          <button className="icon-btn" onClick={onClose} aria-label="Close">
+            <Icon.X />
+          </button>
+        </div>
+        <div className="modal-body">
+          <p className="muted" style={{ fontSize: 13 }}>
+            {checkIns.length} plans were created for <strong>{mentor}</strong>
+            {mentorEmail ? ` (${mentorEmail})` : ''}. Email them all in one message, or copy the
+            links.
+          </p>
+          <div className="bulk-list">
+            {checkIns.map((c) => (
+              <div key={c.id} className="bulk-row">
+                <span className="bulk-row-name">
+                  <strong>{c.athleteName}</strong>
+                  <span className="muted"> · {c.studentNumber}</span>
+                </span>
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(mentorLink(c));
+                      toast(`Link for ${c.athleteName} copied.`);
+                    } catch {
+                      toast('Could not copy.', 'err');
+                    }
+                  }}
+                >
+                  Copy link
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="modal-foot">
+            <a
+              className="btn btn-outline"
+              href={`mailto:${mentorEmail}?subject=${subject}&body=${body}`}
+            >
+              <Icon.Mail /> Email all links
+            </a>
+            <Btn tone="primary" icon={Icon.Doc} onClick={copyAll}>
+              Copy all links
+            </Btn>
+          </div>
         </div>
       </div>
     </div>
@@ -2446,33 +2708,35 @@ function ScreenerStep({ modules, scored, screen, onAdd, onRemove, onField, onCod
 }
 
 /**
- * One student-or-mentor rating on the 1–5 scale, as a slider. 0 means unset; the
- * band tag and the slider's accent colour reflect the current value.
+ * One rating on the 1–5 scale, as five tappable number buttons — clearer than a
+ * slider for picking a value. Each number is coloured by its band; the selected
+ * one shows the band tag and this attribute's tailored descriptor beneath. Tap
+ * the selected number again to clear it.
  */
 function RatingScale({ value, onChange, label, scale }) {
   const band = value ? scale[value - 1] : null;
-  const accent = band
-    ? { red: 'var(--coral)', amber: 'var(--gold-warm)', green: 'var(--green-bright)' }[band.tone]
-    : 'var(--line2)';
   return (
     <div className="adp-scale">
-      <input
-        type="range"
-        className="adp-slider"
-        min="0"
-        max="5"
-        step="1"
-        value={value ?? 0}
-        style={{ accentColor: accent }}
-        aria-label={label}
-        title={band ? `${value} · ${band.tag} — ${band.desc}` : 'Not yet rated'}
-        onChange={(e) => {
-          const v = Number(e.target.value);
-          onChange(v === 0 ? undefined : v);
-        }}
-      />
+      <div className="adp-nums" role="radiogroup" aria-label={label}>
+        {scale.map((s) => {
+          const on = value === s.value;
+          return (
+            <button
+              key={s.value}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              className={`adp-num tone-${s.tone} ${on ? 'on' : ''}`}
+              title={`${s.value} · ${s.tag} — ${s.desc}`}
+              onClick={() => onChange(on ? undefined : s.value)}
+            >
+              {s.value}
+            </button>
+          );
+        })}
+      </div>
       <span className={`adp-scale-tag ${band ? `t-${band.tone}` : ''}`}>
-        {band ? `${value} · ${band.tag}` : '—'}
+        {band ? `${value} · ${band.tag}` : 'Not yet rated'}
       </span>
       {band && <span className="adp-scale-desc">{band.desc}</span>}
     </div>

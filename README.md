@@ -13,18 +13,30 @@ standalone repo.
 
 ## What it does
 
+- **Administrator login** — only administrators reach the platform. The demo
+  accepts any email with the password `ikeys`; production wires UCT single
+  sign-on (Cognito) in place of the stand-in.
+- **Onboard students by link** — from the roster, *Onboard students* produces one
+  shareable link (no login for the student). Students capture their details and
+  screen their modules; each module’s **class times and assessment dates are
+  saved and auto-fill for the next student** taking the same course. New
+  registrations appear on the roster.
 - **Dashboard** — squad RAG distribution, immediate-attention set, faculty
   analysis, mentor follow-ups, and a squad-wide **radar** across the four
-  development areas pooled from every plan.
+  development areas pooled from every plan (development-plan summary sits at the
+  foot of the dashboard).
 - **Athletes** — roster with filter chips; each athlete opens to a live academic
   tracker, a **Mentorship** card (assigned mentor, last seen, next session), and
   their development-plan **radar**.
 - **Academic tracker** — capture attendance, assignments, semester average and
   faculty-warning status; risk (Green/Amber/Red/Critical) is computed with the
   tracker's exact formula.
-- **Academic development plans** — assign a plan to a **mentor** and send them a
-  link; track who's been done (awaiting / completed), the mentor, term, overall
-  rating and next session. Open a completed plan for its summary.
+- **Academic development plans** — **search** and **multi-select** students, pick
+  one mentor, and **bulk-send** them all a private link in one action; or assign a
+  single plan and complete it in-house. Each plan's screener is pre-filled with
+  the student's registered modules, so the mentor only triages which ones to
+  focus on. Track who's been done (awaiting / completed), the mentor, term,
+  overall rating and next session; open a completed plan for its summary.
 - **The plan itself** — a module **screener** (type a UCT code and the title,
   convener, credits and an auto-assigned difficulty fill in from the **3,272**
   courses mined from the 2026 faculty handbooks; easy modules screen clear), then
@@ -93,9 +105,16 @@ single-table design, packaged for AWS Lambda via [SST](https://sst.dev).
   (development plans), `/interventions`, and the public `/mentor-plan/:id`
   (token-gated, no auth). These are the routes this app uses; the package also
   carries the parent platform's other modules, which the dev team can remove.
+- **To build server-side** — two endpoints the onboarding flow calls (mocked in
+  the demo, stubbed in `api.live.js`): `GET /admin/academic/module-profiles`
+  (the shared class-times/assessment-dates store, keyed by course code) and the
+  public `POST /onboarding` (upserts an athlete by student number and folds each
+  module's detail into the profile store — this is what powers auto-populate).
 - **Auth** — Cognito passwordless email OTP in production; a dev bypass
   (`x-dev-auth`) locally. Wire the production Cognito bearer in
-  `apps/web/src/api.live.js` (`authHeaders`).
+  `apps/web/src/api.live.js` (`authHeaders`). The admin login screen
+  (`apps/web/src/main.jsx`) is a stand-in — replace `DEMO_PASSWORD` with the real
+  Cognito sign-in.
 - **Tests** — `npm test` (node:test + dynalite) covers the academic and mentor
   flows, including the public completion round-trip.
 

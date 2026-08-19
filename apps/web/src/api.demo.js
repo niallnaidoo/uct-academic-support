@@ -13,7 +13,7 @@ const KEY = 'uct-academic-demo-v1';
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return withDefaults(JSON.parse(raw));
   } catch {
     /* fall through to seed */
   }
@@ -22,8 +22,18 @@ function load() {
     mentors: demoMentors(),
     checkIns: [],
     interventions: [],
+    moduleProfiles: {},
   };
   save(db);
+  return db;
+}
+/** Fill in any keys a persisted (older) db is missing. */
+function withDefaults(db) {
+  db.athletes ??= [];
+  db.mentors ??= [];
+  db.checkIns ??= [];
+  db.interventions ??= [];
+  db.moduleProfiles ??= {};
   return db;
 }
 function save(db) {
@@ -89,6 +99,76 @@ export const deleteAthlete = (id) =>
     mutate((db) => {
       db.athletes = db.athletes.filter((a) => a.id !== id);
       return { ok: true };
+    }),
+  );
+
+/* ── Module profiles (shared, auto-populate) ──
+ * Course-level detail a student captures once at onboarding — class times and
+ * assessment dates — keyed by course code. The next student who registers the
+ * same module gets it pre-filled, so the office only ever types a module once. */
+export const getModuleProfiles = () => ok(load().moduleProfiles ?? {});
+
+/* ── Student self-onboarding (public link) ──
+ * A student opens the onboarding link, screens their modules and captures their
+ * details. This upserts the athlete (by student number) and folds every module's
+ * times + assessment dates into the shared module-profile store. */
+export const submitOnboarding = (body) =>
+  ok(
+    mutate((db) => {
+      db.moduleProfiles ??= {};
+      const modules = (body.modules ?? [])
+        .filter((m) => String(m.code ?? '').trim())
+        .map((m) => ({
+          code: String(m.code).trim().toUpperCase(),
+          name: m.name?.trim() || undefined,
+          convener: m.convener || undefined,
+          credits: m.credits ?? undefined,
+          faculty: m.faculty || undefined,
+          nqf: m.nqf ?? undefined,
+          difficulty: m.difficulty ?? undefined,
+          times: m.times?.trim() || undefined,
+          assessments: (m.assessments ?? []).filter((a) => a.date || a.label),
+        }));
+      // Fold each module into the shared profile store (auto-populate source).
+      for (const m of modules) {
+        const prev = db.moduleProfiles[m.code] ?? {};
+        db.moduleProfiles[m.code] = {
+          code: m.code,
+          name: m.name ?? prev.name,
+          convener: m.convener ?? prev.convener,
+          credits: m.credits ?? prev.credits,
+          faculty: m.faculty ?? prev.faculty,
+          nqf: m.nqf ?? prev.nqf,
+          difficulty: m.difficulty ?? prev.difficulty,
+          times: m.times ?? prev.times,
+          assessments: m.assessments?.length ? m.assessments : prev.assessments,
+        };
+      }
+      const studentNumber = String(body.studentNumber ?? '').trim().toUpperCase();
+      const creditsRegistered =
+        modules.reduce((t, m) => t + (Number(m.credits) || 0), 0) || undefined;
+      const identity = {
+        firstName: body.firstName?.trim() || '',
+        lastName: body.lastName?.trim() || '',
+        studentNumber,
+        squad: body.squad || 'General',
+        faculty: body.faculty || undefined,
+        degree: body.degree || undefined,
+        yearOfStudy: body.yearOfStudy || undefined,
+        creditsRegistered,
+        modules,
+        facultyWarning: 'No',
+        onboardedAt: now(),
+        consentAt: body.consent ? now() : undefined,
+      };
+      const existing = db.athletes.find((a) => a.studentNumber === studentNumber);
+      if (existing) {
+        Object.assign(existing, identity, { id: existing.id, version: (existing.version ?? 1) + 1 });
+        return existing;
+      }
+      const a = { id: uid('ath'), status: 'active', version: 1, ...identity };
+      db.athletes.push(a);
+      return a;
     }),
   );
 
