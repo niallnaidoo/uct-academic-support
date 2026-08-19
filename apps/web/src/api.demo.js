@@ -126,6 +126,7 @@ export const submitOnboarding = (body) =>
           faculty: m.faculty || undefined,
           nqf: m.nqf ?? undefined,
           difficulty: m.difficulty ?? undefined,
+          sessions: (m.sessions ?? []).filter((s) => s.day && s.time),
           times: m.times?.trim() || undefined,
           assessments: (m.assessments ?? []).filter((a) => a.date || a.label),
         }));
@@ -140,6 +141,7 @@ export const submitOnboarding = (body) =>
           faculty: m.faculty ?? prev.faculty,
           nqf: m.nqf ?? prev.nqf,
           difficulty: m.difficulty ?? prev.difficulty,
+          sessions: m.sessions?.length ? m.sessions : prev.sessions,
           times: m.times ?? prev.times,
           assessments: m.assessments?.length ? m.assessments : prev.assessments,
         };

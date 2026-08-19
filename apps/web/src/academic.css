@@ -823,3 +823,223 @@ a.btn {
     width: 100%;
   }
 }
+
+/* Module name on its own full-width row (mobile-friendly) */
+.onboard-mod-name {
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 14px;
+  background: var(--white);
+}
+.onboard-mod-x {
+  margin-left: auto;
+}
+
+/* ── Class-times day + time picker ── */
+.ct-field {
+  display: block;
+}
+.ct-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.ct-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px 6px 12px;
+  border-radius: 99px;
+  background: var(--green-pale);
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 700;
+}
+.ct-chip button {
+  border: 0;
+  background: rgba(14, 53, 41, 0.12);
+  color: var(--green);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+}
+.ct-chip button svg {
+  width: 11px;
+  height: 11px;
+}
+.ct-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px dashed var(--muted-3);
+  background: transparent;
+  color: var(--green-mid);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 99px;
+  cursor: pointer;
+  min-height: 38px;
+}
+.ct-add:hover {
+  border-color: var(--green-bright);
+  background: var(--green-pale);
+}
+.ct-add svg {
+  width: 12px;
+  height: 12px;
+}
+.ct-pop {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+  padding: 14px;
+  box-shadow: 0 10px 30px rgba(10, 15, 20, 0.1);
+}
+.ct-pop-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.ct-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.ct-day {
+  flex: 1 1 auto;
+  min-width: 46px;
+  min-height: 40px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ct-day:hover {
+  border-color: var(--muted-2);
+  color: var(--ink);
+}
+.ct-day.on {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.ct-time {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 15px;
+  background: var(--white);
+}
+.ct-pop-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.ct-cancel {
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 16px;
+  border-radius: 99px;
+  cursor: pointer;
+}
+.ct-save {
+  border: 0;
+  background: var(--green);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 18px;
+  border-radius: 99px;
+  cursor: pointer;
+}
+.ct-save:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════ Mobile pass ═══════════════════════ */
+@media (max-width: 700px) {
+  .app-bar {
+    padding: 12px 16px;
+  }
+  .app-main {
+    padding: 18px 14px 60px;
+  }
+  .mentor-page {
+    padding: 20px 14px 70px;
+  }
+  .mentor-wizard {
+    padding: 16px 13px;
+  }
+  .mentor-intro h1,
+  .mentor-card h1 {
+    font-size: 22px;
+  }
+  .mentor-card {
+    padding: 24px 20px;
+    margin-top: 4vh;
+  }
+  /* Tabs scroll horizontally instead of wrapping into a broken grid */
+  .tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .tab {
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+  /* Wide tables scroll inside their card rather than clipping */
+  .app-main .card .tbl {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Card header action buttons go full-width and stack cleanly */
+  .card-actions {
+    width: 100%;
+  }
+  .card-actions .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  .modal-foot {
+    flex-wrap: wrap;
+  }
+  .modal-foot .btn,
+  .modal-foot .btn-outline {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}

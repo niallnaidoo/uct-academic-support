@@ -9,22 +9,29 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import * as api from './api.js';
-import { Btn, Card, Icon, Pill } from './atoms.jsx';
+import { Btn, Card, Icon } from './atoms.jsx';
 import { FACULTIES, DEGREES_BY_FACULTY, YEARS_OF_STUDY } from './academic-model.js';
 import {
   lookupCourse,
   moduleDifficulty,
   courseSuggestions,
   normaliseCode,
-  DIFFICULTY_META,
   CATALOGUE_SIZE,
 } from './course-catalogue.js';
 import './screener.css';
 import './academic.css';
 
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const dayIndex = (d) => DAYS.indexOf(d);
+/** A readable "Mon 09:00, Wed 09:00" string from structured sessions. */
+const sessionsToText = (sessions) =>
+  (sessions ?? []).map((s) => `${s.day} ${s.time}`).join(', ');
+const sortSessions = (sessions) =>
+  [...sessions].sort((a, b) => dayIndex(a.day) - dayIndex(b.day) || a.time.localeCompare(b.time));
+
 let seq = 0;
 const rowId = () => `m${(seq += 1)}`;
-const blankModule = () => ({ _id: rowId(), code: '', name: '', times: '', assessments: [], _auto: false });
+const blankModule = () => ({ _id: rowId(), code: '', name: '', sessions: [], assessments: [], _auto: false });
 
 export function StudentOnboardingPage() {
   const [profiles, setProfiles] = useState({});
@@ -79,13 +86,17 @@ export function StudentOnboardingPage() {
         next.difficulty = diff ? diff.level : undefined;
         // Auto-populate the shared per-module detail if the student hasn't typed any.
         if (profile) {
-          const emptyTimes = !m.times?.trim();
+          const emptySessions = !(m.sessions ?? []).length;
           const emptyAssess = !(m.assessments ?? []).length;
-          if (emptyTimes && profile.times) next.times = profile.times;
+          if (emptySessions && profile.sessions?.length) {
+            next.sessions = profile.sessions.map((s) => ({ ...s }));
+          }
           if (emptyAssess && profile.assessments?.length) {
             next.assessments = profile.assessments.map((a) => ({ ...a }));
           }
-          next._prefilled = (emptyTimes && !!profile.times) || (emptyAssess && !!profile.assessments?.length);
+          next._prefilled =
+            (emptySessions && !!profile.sessions?.length) ||
+            (emptyAssess && !!profile.assessments?.length);
         }
         return next;
       }),
@@ -137,7 +148,8 @@ export function StudentOnboardingPage() {
           faculty: m.faculty,
           nqf: m.nqf,
           difficulty: m.difficulty,
-          times: m.times,
+          sessions: sortSessions(m.sessions ?? []),
+          times: sessionsToText(m.sessions) || undefined,
           assessments: (m.assessments ?? []).filter((a) => a.date || a.label),
         })),
       });
@@ -299,7 +311,6 @@ function ModuleCapture({
 }) {
   const listId = useRef(`oc-${rowId()}`).current;
   const suggestions = courseSuggestions(m.code);
-  const diff = m.difficulty ? DIFFICULTY_META[m.difficulty] : null;
   return (
     <div className="onboard-mod">
       <div className="onboard-mod-head">
@@ -319,16 +330,9 @@ function ModuleCapture({
             </option>
           ))}
         </datalist>
-        <input
-          className="module-name"
-          value={m.name}
-          onChange={(e) => onField({ name: e.target.value, _auto: false })}
-          placeholder="Module name"
-        />
-        {diff && <Pill tone={diff.tone}>{diff.label}</Pill>}
         <button
           type="button"
-          className="icon-btn"
+          className="icon-btn onboard-mod-x"
           onClick={onRemove}
           aria-label="Remove module"
           disabled={!canRemove}
@@ -336,6 +340,12 @@ function ModuleCapture({
           <Icon.X />
         </button>
       </div>
+      <input
+        className="module-name onboard-mod-name"
+        value={m.name}
+        onChange={(e) => onField({ name: e.target.value, _auto: false })}
+        placeholder="Module name (fills in automatically)"
+      />
       {(m.convener || m.credits != null) && (
         <div className="module-meta">
           {m.faculty && <span>{m.faculty}</span>}
@@ -345,17 +355,11 @@ function ModuleCapture({
       )}
 
       <div className="onboard-mod-body">
-        <label className="fld">
-          <span>
-            Class times
-            {m._prefilled && <span className="auto-tag" title="Filled in from a teammate">auto-filled</span>}
-          </span>
-          <input
-            value={m.times}
-            onChange={(e) => onField({ times: e.target.value, _prefilled: false })}
-            placeholder="e.g. Mon &amp; Wed 09:00, Tut Thu 14:00"
-          />
-        </label>
+        <ClassTimesField
+          sessions={m.sessions ?? []}
+          prefilled={m._prefilled && !!(m.sessions ?? []).length}
+          onChange={(sessions) => onField({ sessions, _prefilled: false })}
+        />
 
         <div className="onboard-assess">
           <div className="onboard-assess-label">
@@ -393,6 +397,98 @@ function ModuleCapture({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Class times as tappable chips — the student picks the day(s) and a time in a
+ * little pop-up instead of typing a free-text string. Much easier on a phone.
+ */
+function ClassTimesField({ sessions, prefilled, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [days, setDays] = useState([]);
+  const [time, setTime] = useState('');
+
+  const toggleDay = (d) => setDays((ds) => (ds.includes(d) ? ds.filter((x) => x !== d) : [...ds, d]));
+  const reset = () => {
+    setDays([]);
+    setTime('');
+    setOpen(false);
+  };
+  const add = () => {
+    if (!days.length || !time) return;
+    const next = [...sessions];
+    for (const d of days) {
+      if (!next.some((s) => s.day === d && s.time === time)) next.push({ day: d, time });
+    }
+    onChange(sortSessions(next));
+    reset();
+  };
+  const remove = (i) => onChange(sessions.filter((_, j) => j !== i));
+
+  return (
+    <div className="ct-field">
+      <div className="onboard-assess-label">
+        <span>Class times</span>
+        {prefilled && (
+          <span className="auto-tag" title="Filled in from a teammate">
+            auto-filled
+          </span>
+        )}
+      </div>
+      <div className="ct-chips">
+        {sessions.map((s, i) => (
+          <span key={`${s.day}-${s.time}-${i}`} className="ct-chip">
+            {s.day} {s.time}
+            <button type="button" onClick={() => remove(i)} aria-label={`Remove ${s.day} ${s.time}`}>
+              <Icon.X />
+            </button>
+          </span>
+        ))}
+        <button
+          type="button"
+          className="ct-add"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+        >
+          <Icon.Plus /> Add a class time
+        </button>
+      </div>
+
+      {open && (
+        <div className="ct-pop">
+          <div className="ct-pop-label">Which day(s)?</div>
+          <div className="ct-days">
+            {DAYS.map((d) => (
+              <button
+                key={d}
+                type="button"
+                className={`ct-day ${days.includes(d) ? 'on' : ''}`}
+                onClick={() => toggleDay(d)}
+                aria-pressed={days.includes(d)}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+          <div className="ct-pop-label">What time?</div>
+          <input
+            type="time"
+            className="ct-time"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+          />
+          <div className="ct-pop-foot">
+            <button type="button" className="ct-cancel" onClick={reset}>
+              Cancel
+            </button>
+            <button type="button" className="ct-save" onClick={add} disabled={!days.length || !time}>
+              Add {days.length > 1 ? `${days.length} times` : 'time'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
