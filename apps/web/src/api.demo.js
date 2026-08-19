@@ -339,8 +339,13 @@ export const deleteIntervention = (id) =>
 /* ── Student gradebook (token-gated, no auth) ── */
 function resolveGradebook(id, token, db) {
   const a = db.athletes.find((x) => x.id === id);
-  if (!a || !a.gradebookToken || a.gradebookToken !== token) throw new Error('this link is not valid');
-  return a;
+  if (!a) throw new Error('this link is not valid');
+  // Seeded demo students always accept their stable `demo-N` link, whatever else
+  // is (or isn't) stored — so the shared demo link never goes stale.
+  const m = /^ath-demo-(\d+)$/.exec(id ?? '');
+  const demoAlias = m ? `demo-${m[1]}` : null;
+  if (a.gradebookToken === token || (demoAlias && token === demoAlias)) return a;
+  throw new Error('this link is not valid');
 }
 /** Admin: mint (once) and return the student's gradebook link token. */
 export const createGradebookLink = (id) =>
