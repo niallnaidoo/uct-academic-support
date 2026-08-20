@@ -2242,8 +2242,10 @@ const emptySections = () => ({
  * does the actual save (public submit or admin create).
  */
 export function AdpWizard({ athlete, period, initial, onSubmit, onClose }) {
+  // Added rows get an 'm' prefix so they can never collide with the seeded
+  // 'l0, l1, …' ids — a collision would make two modules share screener state.
   const idRef = useRef(0);
-  const nextId = () => `l${(idRef.current += 1)}`;
+  const nextId = () => `m${(idRef.current += 1)}`;
 
   const [step, setStep] = useState(0);
   const [scheduledNext, setScheduledNext] = useState(initial?.scheduledNext ?? '');
@@ -2272,8 +2274,10 @@ export function AdpWizard({ athlete, period, initial, onSubmit, onClose }) {
   const screen = screenerSummary(scored);
 
   /* ── module edits ── */
-  const addModule = () =>
-    setModules((ms) => [...ms, { _id: nextId(), code: '', name: '', screener: {} }]);
+  const addModule = () => {
+    const id = nextId(); // outside the updater — StrictMode double-invokes updaters
+    setModules((ms) => [...ms, { _id: id, code: '', name: '', screener: {} }]);
+  };
   const removeModule = (id) => setModules((ms) => ms.filter((m) => m._id !== id));
   const setModuleField = (id, patch) =>
     setModules((ms) => ms.map((m) => (m._id === id ? { ...m, ...patch } : m)));
@@ -2340,15 +2344,17 @@ export function AdpWizard({ athlete, period, initial, onSubmit, onClose }) {
     setSections((s) => ({ ...s, [secKey]: { ...s[secKey], note } }));
 
   /* ── plan edits ── */
-  const toggleIntervention = (type) =>
+  const toggleIntervention = (type) => {
+    const id = nextId(); // outside the updater — StrictMode double-invokes updaters
     setPlan((p) => {
       const existing = p.find((i) => i.type === type && !i.module);
       if (existing) return p.filter((i) => i !== existing);
       return [
         ...p,
-        { _id: nextId(), type, module: '', referredTo: '', owner: '', dueDate: '', note: '' },
+        { _id: id, type, module: '', referredTo: '', owner: '', dueDate: '', note: '' },
       ];
     });
+  };
   const setPlanField = (id, patch) =>
     setPlan((p) => p.map((i) => (i._id === id ? { ...i, ...patch } : i)));
   const removePlanItem = (id) => setPlan((p) => p.filter((i) => i._id !== id));
