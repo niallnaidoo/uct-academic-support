@@ -35,8 +35,10 @@ standalone repo.
   one mentor, and **bulk-send** them all a private link in one action; or assign a
   single plan and complete it in-house. Each plan's screener is pre-filled with
   the student's registered modules, so the mentor only triages which ones to
-  focus on. Track who's been done (awaiting / completed), the mentor, term,
-  overall rating and next session; open a completed plan for its summary.
+  focus on. The list is the full **history** (every plan, newest first): open a
+  completed plan to **view or edit** it, pick up a **draft** where you left off,
+  or resend an awaiting mentor's link. Both the mentor (on their link) and the
+  office (in-house) can **save a draft** and finish later.
 - **The plan itself** — a module **screener** (type a UCT code and the title,
   convener, credits and an auto-assigned difficulty fill in from the **3,272**
   courses mined from the 2026 faculty handbooks; easy modules screen clear), then

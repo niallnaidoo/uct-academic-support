@@ -63,6 +63,8 @@ export const deleteMentor = (id) => req(`/admin/academic/mentors/${id}`, { metho
 
 export const getCheckIns = () => req('/admin/academic/check-ins');
 export const createCheckIn = (body) => req('/admin/academic/check-ins', { method: 'POST', body });
+export const updateCheckIn = (id, patch) =>
+  req(`/admin/academic/check-ins/${id}`, { method: 'PATCH', body: patch });
 export const deleteCheckIn = (id) => req(`/admin/academic/check-ins/${id}`, { method: 'DELETE' });
 
 export const getInterventions = () => req('/admin/academic/interventions');

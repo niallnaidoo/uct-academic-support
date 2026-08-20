@@ -27,6 +27,7 @@ export const deleteMentor = (...a) => impl.deleteMentor(...a);
 
 export const getCheckIns = (...a) => impl.getCheckIns(...a);
 export const createCheckIn = (...a) => impl.createCheckIn(...a);
+export const updateCheckIn = (...a) => impl.updateCheckIn(...a);
 export const deleteCheckIn = (...a) => impl.deleteCheckIn(...a);
 
 export const getInterventions = (...a) => impl.getInterventions(...a);

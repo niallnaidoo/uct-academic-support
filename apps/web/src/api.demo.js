@@ -279,10 +279,25 @@ export const createCheckIn = (body) =>
         token,
         scheduledNext: body.scheduledNext,
         sentAt: body.planStatus === 'sent' ? now() : undefined,
+        completedAt: body.planStatus === 'completed' ? now() : undefined,
         createdAt: now(),
         version: 1,
       };
       db.checkIns.push(c);
+      return c;
+    }),
+  );
+/** Patch an existing plan — used to continue a draft, or edit a completed plan. */
+export const updateCheckIn = (id, patch) =>
+  ok(
+    mutate((db) => {
+      const c = db.checkIns.find((x) => x.id === id);
+      if (!c) throw new Error('plan not found');
+      const becomingCompleted = patch.planStatus === 'completed' && c.planStatus !== 'completed';
+      Object.assign(c, patch, { id, version: (c.version ?? 1) + 1 });
+      if (becomingCompleted) c.completedAt = now();
+      if (patch.planStatus === 'draft') c.draftSavedAt = now();
+      if ((c.kind === 'adp' || c.planStatus) && !c.token) c.token = tokenStr();
       return c;
     }),
   );
@@ -443,6 +458,8 @@ export const submitMentorPlan = (id, token, body) =>
   ok(
     mutate((db) => {
       const c = resolvePlan(id, token, db);
+      const status = body.status === 'draft' ? 'draft' : 'completed';
+      const wasCompleted = c.planStatus === 'completed';
       Object.assign(c, {
         modules: body.modules ?? c.modules,
         sections: body.sections ?? c.sections,
@@ -450,25 +467,32 @@ export const submitMentorPlan = (id, token, body) =>
         note: body.note ?? c.note,
         scheduledNext: body.scheduledNext ?? c.scheduledNext,
         followUpRequired: body.followUpRequired ?? c.followUpRequired,
-        planStatus: 'completed',
-        completedAt: now(),
-        date: today(),
+        planStatus: status,
         version: (c.version ?? 1) + 1,
       });
-      for (const item of body.plan ?? []) {
-        db.interventions.push({
-          id: uid('int'),
-          studentNumber: c.studentNumber,
-          athleteName: c.athleteName,
-          date: today(),
-          concern: `${item.type ?? 'intervention'}${item.module ? ` · ${item.module}` : ''}${c.period ? ` · ${c.period}` : ''}`,
-          actionTaken: item.type,
-          referredTo: item.referredTo,
-          followUpDate: item.dueDate,
-          status: 'open',
-          version: 1,
-        });
+      if (status === 'draft') {
+        c.draftSavedAt = now();
+        return { ok: true, athleteName: c.athleteName, status };
       }
-      return { ok: true, athleteName: c.athleteName };
+      c.completedAt = now();
+      c.date = today();
+      // Log interventions once, when the plan first reaches completed.
+      if (!wasCompleted) {
+        for (const item of body.plan ?? []) {
+          db.interventions.push({
+            id: uid('int'),
+            studentNumber: c.studentNumber,
+            athleteName: c.athleteName,
+            date: today(),
+            concern: `${item.type ?? 'intervention'}${item.module ? ` · ${item.module}` : ''}${c.period ? ` · ${c.period}` : ''}`,
+            actionTaken: item.type,
+            referredTo: item.referredTo,
+            followUpDate: item.dueDate,
+            status: 'open',
+            version: 1,
+          });
+        }
+      }
+      return { ok: true, athleteName: c.athleteName, status };
     }),
   );

@@ -578,6 +578,25 @@ a.btn {
   flex-wrap: wrap;
 }
 
+/* Wizard footer: Cancel + Save-as-draft grouped on the left */
+.adp-foot {
+  flex-wrap: wrap;
+}
+.adp-foot-left {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Edit affordance at the top of a plan's detail view */
+.det-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
 /* ── Assign-plan: searchable multi-select ── */
 .fld-label-row {
   display: flex;

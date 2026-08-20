@@ -14,7 +14,19 @@
 /* THE core fix: the screener card must stack, not lay out as a flex row. */
 .module-list .module-card {
   display: block;
-  padding: 16px 18px;
+  padding: 14px 18px 16px;
+  /* The RAG screener status shows as a bold colour strip across the top. */
+  border-top-width: 4px;
+  border-top-color: var(--line2);
+}
+.module-list .module-card.flag-red {
+  border-top-color: var(--coral);
+}
+.module-list .module-card.flag-amber {
+  border-top-color: var(--gold-warm);
+}
+.module-list .module-card.flag-green {
+  border-top-color: var(--green-bright);
 }
 
 /* Identity row: code + a name box that grows for long titles + pills on the right */

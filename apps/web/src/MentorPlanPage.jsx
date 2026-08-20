@@ -21,6 +21,7 @@ export function MentorPlanPage() {
   const [loadError, setLoadError] = useState(null);
   const [completed, setCompleted] = useState(null); // the submitted plan, for the summary
   const [showSummary, setShowSummary] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -120,6 +121,33 @@ export function MentorPlanPage() {
     setCompleted(payload);
     setShowSummary(true);
   }
+  async function saveDraft(payload) {
+    await api.submitMentorPlan(id, token, { ...payload, status: 'draft' });
+    setPlan((p) => ({ ...p, ...payload, planStatus: 'draft' }));
+    setDraftSaved(true);
+    window.scrollTo(0, 0);
+  }
+
+  // Draft saved — a clear "you can stop here and come back" confirmation.
+  if (draftSaved) {
+    return (
+      <div className="mentor-page">
+        <div className="mentor-card">
+          <div className="mentor-eyebrow">Academic development plan</div>
+          <h1>Draft saved.</h1>
+          <p>
+            Your progress on <strong>{plan.athleteName}</strong>’s plan is saved. You can close this
+            page and come back to <strong>the same link</strong> any time to finish it.
+          </p>
+          <Btn tone="primary" onClick={() => setDraftSaved(false)}>
+            Continue now
+          </Btn>
+        </div>
+      </div>
+    );
+  }
+
+  const resuming = plan.planStatus === 'draft';
 
   return (
     <div className="mentor-page mentor-wizard-page">
@@ -130,9 +158,9 @@ export function MentorPlanPage() {
           {plan.period ? <span className="muted"> · {plan.period}</span> : null}
         </h1>
         <p className="muted">
-          You’ve been asked to complete this plan with {firstName || 'the student'}. Work through it
-          together, then submit — it goes straight to the sport office. Nothing to install, no
-          login.
+          {resuming
+            ? `Picking up where you left off with ${firstName || 'the student'}. Finish the plan and submit — or save a draft again. No login.`
+            : `You’ve been asked to complete this plan with ${firstName || 'the student'}. Work through it together, then submit — it goes straight to the sport office. You can also save a draft and come back later. Nothing to install, no login.`}
         </p>
       </div>
       <div className="mentor-wizard">
@@ -146,7 +174,9 @@ export function MentorPlanPage() {
             note: plan.note,
             scheduledNext: plan.scheduledNext,
           }}
+          editing={resuming}
           onSubmit={submit}
+          onSaveDraft={saveDraft}
           onClose={() => window.scrollTo(0, 0)}
         />
       </div>

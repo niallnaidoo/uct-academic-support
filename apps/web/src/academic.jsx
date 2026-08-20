@@ -81,6 +81,9 @@ const invInterventions = () => queryClient.invalidateQueries({ queryKey: qk.inte
 
 /** Assignment status of a plan, for the tracking view. */
 function planStatusOf(c) {
+  // Draft is checked before the ADP fallback so an in-progress plan (kind adp,
+  // status draft) isn't mislabelled "Completed".
+  if (c.planStatus === 'draft') return { key: 'draft', label: 'Draft', tone: 'amber' };
   if (c.planStatus === 'sent') return { key: 'sent', label: 'Awaiting mentor', tone: 'amber' };
   if (c.planStatus === 'completed' || c.kind === ADP_KIND)
     return { key: 'completed', label: 'Completed', tone: 'green' };
@@ -1406,48 +1409,100 @@ function CheckInsTab({ athletes, checkIns, mentors, toast }) {
       ),
     );
   const counts = {
+    draft: plans.filter((c) => planStatusOf(c).key === 'draft').length,
     sent: plans.filter((c) => planStatusOf(c).key === 'sent').length,
     completed: plans.filter((c) => planStatusOf(c).key === 'completed').length,
   };
 
-  async function adminComplete(payload) {
-    // The admin completed a plan in-house: save it, log its interventions.
-    const created = await api.createCheckIn({
-      ...payload,
-      athleteId: completing.athlete.id,
-      mentor: completing.mentorName,
-      mentorEmail: completing.mentorEmail,
-      planStatus: 'completed',
-    });
-    for (const item of payload.plan ?? []) {
-      try {
-        await api.createIntervention({
-          athleteId: completing.athlete.id,
-          studentNumber: created.studentNumber,
-          athleteName: created.athleteName,
-          date: created.date,
-          concern: `${interventionLabel(item)}${payload.period ? ` · ${payload.period}` : ''}${item.note ? ` — ${item.note}` : ''}`,
-          actionTaken: INTERVENTION_TYPE_META[item.type]?.label,
-          referredTo: item.referredTo || undefined,
-          followUpDate: item.dueDate || undefined,
-        });
-      } catch {
-        /* best-effort */
+  // Build the wizard context to continue a draft or edit an existing plan.
+  function contextFromCheckIn(c) {
+    const athlete = athletes.find((a) => a.studentNumber === c.studentNumber) ?? {
+      firstName: (c.athleteName ?? '').split(' ')[0],
+      lastName: (c.athleteName ?? '').split(' ').slice(1).join(' '),
+      studentNumber: c.studentNumber,
+    };
+    return {
+      athlete,
+      period: c.period,
+      mentorName: c.mentor,
+      mentorEmail: c.mentorEmail,
+      checkIn: c,
+      initial: {
+        modules: c.modules,
+        sections: c.sections,
+        plan: c.plan,
+        note: c.note,
+        scheduledNext: c.scheduledNext,
+      },
+    };
+  }
+
+  async function persistPlan(payload, status) {
+    const ctx = completing;
+    const prevStatus = ctx.checkIn?.planStatus;
+    let saved;
+    if (ctx.checkIn) {
+      saved = await api.updateCheckIn(ctx.checkIn.id, {
+        ...payload,
+        mentor: ctx.mentorName ?? ctx.checkIn.mentor,
+        mentorEmail: ctx.mentorEmail ?? ctx.checkIn.mentorEmail,
+        planStatus: status,
+      });
+    } else {
+      saved = await api.createCheckIn({
+        ...payload,
+        athleteId: ctx.athlete.id,
+        mentor: ctx.mentorName,
+        mentorEmail: ctx.mentorEmail,
+        planStatus: status,
+      });
+    }
+    // Log interventions once — only when the plan first reaches completed.
+    if (status === 'completed' && prevStatus !== 'completed') {
+      for (const item of payload.plan ?? []) {
+        try {
+          await api.createIntervention({
+            athleteId: ctx.athlete?.id,
+            studentNumber: saved.studentNumber,
+            athleteName: saved.athleteName,
+            date: saved.date,
+            concern: `${interventionLabel(item)}${payload.period ? ` · ${payload.period}` : ''}${item.note ? ` — ${item.note}` : ''}`,
+            actionTaken: INTERVENTION_TYPE_META[item.type]?.label,
+            referredTo: item.referredTo || undefined,
+            followUpDate: item.dueDate || undefined,
+          });
+        } catch {
+          /* best-effort */
+        }
       }
+      invInterventions();
     }
     invCheckIns();
-    invInterventions();
-    toast('Development plan saved.');
+    toast(
+      status === 'draft'
+        ? 'Draft saved — resume it any time.'
+        : ctx.checkIn
+          ? 'Plan updated.'
+          : 'Development plan saved.',
+    );
     setCompleting(null);
   }
+
+  const adminComplete = (payload) => persistPlan(payload, 'completed');
+  const adminSaveDraft = (payload) => persistPlan(payload, 'draft');
 
   if (completing) {
     return (
       <AdpWizard
         athlete={completing.athlete}
         period={completing.period}
-        initial={completing.modules?.length ? { modules: completing.modules } : undefined}
+        initial={
+          completing.initial ??
+          (completing.modules?.length ? { modules: completing.modules } : undefined)
+        }
+        editing={!!completing.checkIn}
         onSubmit={adminComplete}
+        onSaveDraft={adminSaveDraft}
         onClose={() => setCompleting(null)}
       />
     );
@@ -1456,7 +1511,16 @@ function CheckInsTab({ athletes, checkIns, mentors, toast }) {
   return (
     <>
       {openPlan && (
-        <AdpDetail checkIn={openPlan} athletes={athletes} onClose={() => setOpenPlan(null)} />
+        <AdpDetail
+          checkIn={openPlan}
+          athletes={athletes}
+          onClose={() => setOpenPlan(null)}
+          onEdit={() => {
+            const c = openPlan;
+            setOpenPlan(null);
+            setCompleting(contextFromCheckIn(c));
+          }}
+        />
       )}
       {linkFor && (
         <MentorLinkModal checkIn={linkFor} onClose={() => setLinkFor(null)} toast={toast} />
@@ -1483,7 +1547,7 @@ function CheckInsTab({ athletes, checkIns, mentors, toast }) {
       )}
       <Card
         title="Academic development plans"
-        sub="Assign each athlete's plan to a mentor and send them a link — track who's been done, and open a completed plan to see its summary."
+        sub="Every plan for the squad, newest first — the full history. Open a completed plan to view or edit it, pick up a draft where you left off, or resend an awaiting mentor's link."
         action={
           <Btn
             tone="primary"
@@ -1510,6 +1574,11 @@ function CheckInsTab({ athletes, checkIns, mentors, toast }) {
               <span>
                 <Pill tone="amber">{counts.sent}</Pill> awaiting the mentor
               </span>
+              {counts.draft > 0 && (
+                <span>
+                  <Pill tone="amber">{counts.draft}</Pill> draft{counts.draft === 1 ? '' : 's'}
+                </span>
+              )}
             </div>
             <table className="tbl tbl-click">
               <thead>
@@ -1527,7 +1596,11 @@ function CheckInsTab({ athletes, checkIns, mentors, toast }) {
                 {plans.map((c) => {
                   const st = planStatusOf(c);
                   const sum = c.kind === ADP_KIND ? adpSummary(c) : null;
-                  const onRow = () => (st.key === 'sent' ? setLinkFor(c) : setOpenPlan(c));
+                  const onRow = () => {
+                    if (st.key === 'sent') setLinkFor(c);
+                    else if (st.key === 'draft') setCompleting(contextFromCheckIn(c));
+                    else setOpenPlan(c);
+                  };
                   return (
                     <tr
                       key={c.id}
@@ -1598,7 +1671,7 @@ function seedPlanModules(athlete) {
     .filter((m) => String(m.code ?? '').trim())
     .map((m) => ({
       code: String(m.code).trim().toUpperCase(),
-      name: m.name,
+      name: m.name ?? '',
       convener: m.convener,
       credits: m.credits,
       faculty: m.faculty,
@@ -2238,10 +2311,11 @@ const emptySections = () => ({
 /**
  * The plan wizard — completed by an external mentor on the public page, or by an
  * admin in-house. `athlete` is fixed (name + faculty + student number), `period`
- * is set at assignment, `initial` seeds a resumed plan, and `onSubmit(payload)`
- * does the actual save (public submit or admin create).
+ * is set at assignment, `initial` seeds a resumed plan (a draft or an edit), and
+ * `onSubmit(payload)` does the actual save. `onSaveDraft(payload)`, when given,
+ * saves partial progress; `editing` relabels the final button.
  */
-export function AdpWizard({ athlete, period, initial, onSubmit, onClose }) {
+export function AdpWizard({ athlete, period, initial, onSubmit, onSaveDraft, onClose, editing }) {
   // Added rows get an 'm' prefix so they can never collide with the seeded
   // 'l0, l1, …' ids — a collision would make two modules share screener state.
   const idRef = useRef(0);
@@ -2251,7 +2325,13 @@ export function AdpWizard({ athlete, period, initial, onSubmit, onClose }) {
   const [scheduledNext, setScheduledNext] = useState(initial?.scheduledNext ?? '');
   const [modules, setModules] = useState(() =>
     initial?.modules?.length
-      ? initial.modules.map((m, i) => ({ _id: `l${i}`, ...m, screener: m.screener ?? {} }))
+      ? initial.modules.map((m, i) => ({
+          _id: `l${i}`,
+          ...m,
+          code: m.code ?? '',
+          name: m.name ?? '',
+          screener: m.screener ?? {},
+        }))
       : [{ _id: 'l0', code: '', name: '', screener: {} }],
   );
   const [sections, setSections] = useState(() => ({
@@ -2361,15 +2441,12 @@ export function AdpWizard({ athlete, period, initial, onSubmit, onClose }) {
 
   const go = (i) => setStep(Math.max(0, Math.min(ADP_STEPS.length - 1, i)));
 
-  async function save() {
-    setBusy(true);
-    setError(null);
-
+  function buildPayload() {
     // Persist only real modules; prune section ratings to the flagged set.
     const flaggedCodes = new Set(flagged.map((m) => m.code));
     const cleanModules = scored.map((m) => ({
       code: m.code.trim(),
-      name: m.name.trim() || undefined,
+      name: m.name?.trim() || undefined,
       status: m.status,
       screener: m.screener,
       convener: m.convener,
@@ -2404,25 +2481,33 @@ export function AdpWizard({ athlete, period, initial, onSubmit, onClose }) {
     const followUpRequired =
       cleanPlan.length || scored.some((m) => m.status === 'at_risk') ? 'Yes' : 'No';
 
+    return {
+      studentNumber: athlete.studentNumber,
+      athleteName: `${athlete.firstName} ${athlete.lastName}`,
+      followUpRequired,
+      answers: {},
+      note: overallNote || undefined,
+      kind: ADP_KIND,
+      period: period || undefined,
+      modules: cleanModules,
+      sections: cleanSections,
+      plan: cleanPlan,
+      scheduledNext: scheduledNext || undefined,
+    };
+  }
+
+  async function persist(handler) {
+    setBusy(true);
+    setError(null);
     try {
-      await onSubmit({
-        studentNumber: athlete.studentNumber,
-        athleteName: `${athlete.firstName} ${athlete.lastName}`,
-        followUpRequired,
-        answers: {},
-        note: overallNote || undefined,
-        kind: ADP_KIND,
-        period: period || undefined,
-        modules: cleanModules,
-        sections: cleanSections,
-        plan: cleanPlan,
-        scheduledNext: scheduledNext || undefined,
-      });
+      await handler(buildPayload());
     } catch (err) {
-      setError(err.message || 'Could not submit the plan.');
+      setError(err.message || 'Could not save the plan.');
       setBusy(false);
     }
   }
+  const save = () => persist(onSubmit);
+  const saveDraft = () => (onSaveDraft ? persist(onSaveDraft) : undefined);
 
   const stepKey = ADP_STEPS[step].key;
 
@@ -2533,7 +2618,14 @@ export function AdpWizard({ athlete, period, initial, onSubmit, onClose }) {
       )}
 
       <div className="adp-foot">
-        <Btn onClick={onClose}>Cancel</Btn>
+        <div className="adp-foot-left">
+          <Btn onClick={onClose}>Cancel</Btn>
+          {onSaveDraft && (
+            <Btn icon={Icon.Doc} onClick={saveDraft} disabled={busy}>
+              Save as draft
+            </Btn>
+          )}
+        </div>
         <div className="adp-foot-nav">
           <Btn onClick={() => go(step - 1)} disabled={step === 0}>
             Back
@@ -2544,7 +2636,7 @@ export function AdpWizard({ athlete, period, initial, onSubmit, onClose }) {
             </Btn>
           ) : (
             <Btn tone="primary" icon={Icon.Check} onClick={save} disabled={busy}>
-              {busy ? 'Saving…' : 'Save development plan'}
+              {busy ? 'Saving…' : editing ? 'Save changes' : 'Save development plan'}
             </Btn>
           )}
         </div>
@@ -3245,7 +3337,7 @@ function DetailRating({ attr, rating }) {
   );
 }
 
-export function AdpDetail({ checkIn, athletes, onClose, embedded = false }) {
+export function AdpDetail({ checkIn, athletes, onClose, onEdit, embedded = false }) {
   const isAdp = checkIn.kind === ADP_KIND;
   const sum = isAdp ? adpSummary(checkIn) : null;
   const athlete = athletes.find((a) => a.studentNumber === checkIn.studentNumber);
@@ -3253,6 +3345,7 @@ export function AdpDetail({ checkIn, athletes, onClose, embedded = false }) {
   const sections = checkIn.sections ?? {};
   const plan = checkIn.plan ?? [];
   const canShare = !embedded && isAdp && !!checkIn.token;
+  const canEdit = !embedded && isAdp && !!onEdit;
 
   const body = (
     <div className={`modal det-modal ${embedded ? 'det-embedded' : ''}`} onClick={(e) => e.stopPropagation()}>
@@ -3302,6 +3395,16 @@ export function AdpDetail({ checkIn, athletes, onClose, embedded = false }) {
         </div>
 
         <div className="det-body">
+          {canEdit && (
+            <div className="det-edit-row">
+              <Btn tone="primary" icon={Icon.Form} onClick={onEdit}>
+                Edit this plan
+              </Btn>
+              <span className="muted" style={{ fontSize: 12 }}>
+                Change any answer, rating or intervention and save.
+              </span>
+            </div>
+          )}
           {canShare && <ReportShare checkIn={checkIn} />}
 
           {!isAdp && (
