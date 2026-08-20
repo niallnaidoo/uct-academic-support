@@ -985,12 +985,6 @@ a.btn {
 
 /* ═══════════════════════ Mobile pass ═══════════════════════ */
 @media (max-width: 700px) {
-  .app-bar {
-    padding: 12px 16px;
-  }
-  .app-main {
-    padding: 18px 14px 60px;
-  }
   .mentor-page {
     padding: 20px 14px 70px;
   }
@@ -1353,6 +1347,21 @@ a.btn {
 /* On mobile, fold the date under the assessment so the mark input stays on-screen */
 .gb-date-sub {
   display: none;
+}
+
+/* ── Wizard on mobile: show the active step's label + keep the guide button tidy ── */
+@media (max-width: 760px) {
+  .adp-step.on .adp-step-l {
+    display: inline;
+  }
+  .adp-guide-btn {
+    white-space: nowrap;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+  .adp-title {
+    font-size: 20px;
+  }
 }
 @media (max-width: 560px) {
   .gb-date-col {
