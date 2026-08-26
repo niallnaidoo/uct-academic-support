@@ -6,7 +6,7 @@
  * assessedAt stamping, the mentor-plan token flow) so the UI is exercised exactly
  * as it would be against the Hono backend — just with no server and no auth.
  */
-import { demoAthletes, demoMentors } from './demo-seed.js';
+import { demoAthletes, demoMentors, demoCheckIns, demoInterventions } from './demo-seed.js';
 import { buildGradebook } from './academic-model.js';
 
 const KEY = 'uct-academic-demo-v1';
@@ -21,8 +21,8 @@ function load() {
   const db = {
     athletes: demoAthletes(),
     mentors: demoMentors(),
-    checkIns: [],
-    interventions: [],
+    checkIns: demoCheckIns(),
+    interventions: demoInterventions(),
     moduleProfiles: {},
     settings: { ...DEFAULT_SETTINGS },
   };
