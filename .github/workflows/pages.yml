@@ -28,12 +28,13 @@ jobs:
         with:
           node-version: 20
       - name: Install web deps
-        working-directory: apps/web
-        # Drop the lockfile so npm resolves the platform-specific optional deps
-        # (rollup's linux binary) fresh on the CI runner — works around npm/cli#4828.
+        # npm treats apps/web as a workspace member and uses the ROOT lockfile, so
+        # remove every lockfile to force fresh resolution of rollup's linux optional
+        # binary on the CI runner — works around npm/cli#4828.
         run: |
-          rm -f package-lock.json
-          npm install --no-audit --no-fund
+          rm -f package-lock.json apps/web/package-lock.json packages/api/package-lock.json
+          rm -rf node_modules apps/web/node_modules
+          npm install --workspace apps/web --no-audit --no-fund
       - name: Build demo
         working-directory: apps/web
         env:
