@@ -99,6 +99,11 @@ function mentorLink(checkIn) {
   return `${window.location.origin}${import.meta.env.BASE_URL}#/mentor/${checkIn.id}?t=${checkIn.token}`;
 }
 
+/** The AI-mentor link: an ElevenLabs voice agent runs the session for the student. */
+function aiMentorLink(checkIn) {
+  return `${window.location.origin}${import.meta.env.BASE_URL}#/ai-mentor/${checkIn.id}?t=${checkIn.token}`;
+}
+
 /** The public student self-onboarding link (hash-routed, no token — link only). */
 function onboardLink() {
   return `${window.location.origin}${import.meta.env.BASE_URL}#/onboard`;
@@ -2062,6 +2067,30 @@ function MentorLinkModal({ checkIn, onClose, toast }) {
             Automated email delivery is wired on deploy (AWS SES, af-south-1); for now, copy the
             link or use your own mail client.
           </p>
+
+          <div className="ai-link-row">
+            <div>
+              <strong>Or let the AI mentor run it</strong>
+              <div className="muted" style={{ fontSize: 12 }}>
+                An ElevenLabs voice agent walks the student through the plan — the office reviews it
+                after.
+              </div>
+            </div>
+            <button
+              type="button"
+              className="link-btn"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(aiMentorLink(checkIn));
+                  toast('AI-mentor link copied.');
+                } catch {
+                  toast('Could not copy.', 'err');
+                }
+              }}
+            >
+              Copy AI-mentor link
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -64,6 +64,11 @@ standalone repo.
   Mentors never log in.
 - **Public mentor page** (`/#/mentor/:id?t=…`) — the external mentor opens their
   link, completes the plan with the student, submits, and sees the summary.
+- **AI mentor** (`/#/ai-mentor/:id?t=…`) — an **ElevenLabs voice agent** runs the
+  session in place of a human: it talks the student through the plan and its
+  client-tool calls build and submit the same plan (with wellbeing escalation to
+  a person). The demo runs a scripted mock (browser speech) with no key; three
+  env vars swap in the live voice. Framework: [`docs/AI_MENTOR.md`](docs/AI_MENTOR.md).
 
 ---
 
