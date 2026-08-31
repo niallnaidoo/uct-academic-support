@@ -43,8 +43,16 @@ standalone repo.
   convener, credits and an auto-assigned difficulty fill in from the **3,272**
   courses mined from the 2026 faculty handbooks; easy modules screen clear), then
   four development areas rated 1–5 with tailored per-category descriptors, a
-  **question bank** to draw the student out, and an **intervention plan** (tutor,
-  SI, alumni mentor, referral, leave of absence…) logged to a register.
+  **question bank** to draw the student out, and an **action checklist** — the
+  mentor ticks concrete, per-area actions for the student (no dates/calendars).
+  The student then ticks these off on their own report link, so progress is
+  monitored proactively.
+- **Academic standing (frictionless)** — an athlete's RAG standing is derived
+  from the development plan's 1–5 ratings and their **real recorded marks** — no
+  subjective, manually-captured attendance percentages to keep up to date. The
+  athlete view leads with plan-derived metrics (standing, average mark, modules
+  to watch, actions on track). `academicRisk` prefers `athlete.standing` (set by
+  `standingFromPlan`), falling back to a manual snapshot only if there's no plan.
 - **Gradebook** — assessment dates captured at onboarding (or seeded from a
   teammate who's taken the same module) drive a per-student **gradebook**. Three
   weeks after each assessment, marks are usually out, so the student is prompted

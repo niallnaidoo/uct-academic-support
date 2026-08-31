@@ -7,14 +7,33 @@
  * as it would be against the Hono backend — just with no server and no auth.
  */
 import { demoAthletes, demoMentors, demoCheckIns, demoInterventions } from './demo-seed.js';
-import { buildGradebook } from './academic-model.js';
+import { buildGradebook, standingFromPlan, markAverage } from './academic-model.js';
+
+/**
+ * Derive each athlete's academic standing from their latest completed development
+ * plan + recorded marks — so risk is frictionless (no manual snapshot needed).
+ */
+function recomputeStandings(db) {
+  const latest = {};
+  for (const c of db.checkIns ?? []) {
+    if (c.kind !== 'adp' || c.planStatus !== 'completed') continue;
+    const t = c.completedAt ?? c.date ?? '';
+    const cur = latest[c.studentNumber];
+    if (!cur || t > (cur.completedAt ?? cur.date ?? '')) latest[c.studentNumber] = c;
+  }
+  for (const a of db.athletes ?? []) {
+    const c = latest[a.studentNumber];
+    a.standing = c ? standingFromPlan(c, markAverage(a.grades)) : undefined;
+  }
+  return db;
+}
 
 const KEY = 'uct-academic-demo-v1';
 
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return withDefaults(JSON.parse(raw));
+    if (raw) return recomputeStandings(withDefaults(JSON.parse(raw)));
   } catch {
     /* fall through to seed */
   }
@@ -27,7 +46,7 @@ function load() {
     settings: { ...DEFAULT_SETTINGS },
   };
   save(db);
-  return db;
+  return recomputeStandings(db);
 }
 /** Organisation settings — makes the platform scalable across schools/sports. */
 export const DEFAULT_SETTINGS = {
@@ -476,9 +495,9 @@ export const submitMentorPlan = (id, token, body) =>
       }
       c.completedAt = now();
       c.date = today();
-      // Log interventions once, when the plan first reaches completed.
+      // Log only legacy (typed) interventions — checklist actions live on the plan.
       if (!wasCompleted) {
-        for (const item of body.plan ?? []) {
+        for (const item of (body.plan ?? []).filter((i) => i.type && !i.text)) {
           db.interventions.push({
             id: uid('int'),
             studentNumber: c.studentNumber,
@@ -494,5 +513,18 @@ export const submitMentorPlan = (id, token, body) =>
         }
       }
       return { ok: true, athleteName: c.athleteName, status };
+    }),
+  );
+
+/** Student ticks off their action checklist — proactive monitoring, no login. */
+export const setPlanProgress = (id, token, body) =>
+  ok(
+    mutate((db) => {
+      const c = resolvePlan(id, token, db);
+      const done = body.done ?? []; // booleans, by plan-item index
+      c.plan = (c.plan ?? []).map((it, i) => (i < done.length ? { ...it, done: !!done[i] } : it));
+      c.progressAt = now();
+      c.version = (c.version ?? 1) + 1;
+      return { ok: true, done: c.plan.filter((i) => i.done).length, total: c.plan.length };
     }),
   );

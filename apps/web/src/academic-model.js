@@ -147,6 +147,10 @@ export function isAssessed(a) {
  * spreadsheet, which reads a blank row as all-zeros and paints it RED.
  */
 export function academicRisk(a) {
+  // Prefer the development-plan-derived standing — objective (ratings + real
+  // marks) and frictionless. Falls back to a manual snapshot only if no plan.
+  const s = a?.standing?.risk;
+  if (s && s !== 'unassessed') return s;
   if (!isAssessed(a)) return 'unassessed';
   const warn = a.facultyWarning === 'Yes';
   const lec = a.lectureAttendance;
@@ -969,11 +973,138 @@ export const INTERVENTION_TYPES = [
 
 export const INTERVENTION_TYPE_META = Object.fromEntries(INTERVENTION_TYPES.map((t) => [t.key, t]));
 
-/** A short human label for a planned intervention (type + module, if any). */
+/** A short human label for a planned action (checklist text, or legacy type). */
 export function interventionLabel(item) {
+  if (item?.text) return item.text;
   const meta = INTERVENTION_TYPE_META[item?.type];
-  if (!meta) return item?.type ?? 'Intervention';
+  if (!meta) return item?.type ?? 'Action';
   return item.module ? `${meta.label} · ${item.module}` : meta.label;
+}
+
+/* ─────────────────────── Student action checklists ──────────────────────── */
+
+/**
+ * Instead of dated interventions, the mentor builds the student a CHECKLIST of
+ * concrete actions — grouped by development area — that the student then ticks
+ * off. Each item is stored as { section, text, done }, so we can monitor what's
+ * been done. These are suggestions the mentor selects from (they can add their
+ * own too).
+ */
+export const ACTION_SECTIONS = [
+  {
+    key: 'content',
+    title: 'Understanding the content',
+    items: [
+      'Attend every lecture and tutorial this week',
+      'Book weekly sessions with a course tutor',
+      'Go to the SI / hot-seat sessions each week',
+      'Work through the textbook chapters I’m behind on',
+      'Join or start a study group for this module',
+      'See the lecturer in consultation once this week',
+    ],
+  },
+  {
+    key: 'assessments',
+    title: 'Assessments & exams',
+    items: [
+      'Put every test, assignment and exam date in one calendar',
+      'Start each assignment at least a week early',
+      'Do a timed past paper before the next test',
+      'Review the last returned test and fix the mistakes',
+      'Build a topic-by-topic exam revision timetable',
+      'Hand in the next assignment on time',
+    ],
+  },
+  {
+    key: 'worklife',
+    title: 'Work-life balance',
+    items: [
+      'Map training and study into one weekly plan',
+      'Protect two fixed study blocks a day',
+      'Aim for 7–8 hours of sleep on weeknights',
+      'Book a Student Wellness session',
+      'Speak to financial aid about my options',
+    ],
+  },
+  {
+    key: 'careers',
+    title: 'Careers',
+    items: [
+      'Book a session with the careers service',
+      'Apply for one vac-work or internship this term',
+      'Update my CV',
+      'Meet an alumnus working in my target field',
+      'Attend one networking or industry event',
+    ],
+  },
+];
+
+export const ACTION_SECTION_META = Object.fromEntries(ACTION_SECTIONS.map((s) => [s.key, s]));
+
+/** The area a checklist item belongs to — new items carry `section`; migrate old ones. */
+export function actionSection(item) {
+  if (item?.section) return item.section;
+  // Legacy intervention types → nearest development area.
+  const map = {
+    course_tutor: 'content',
+    supplemental_instruction: 'content',
+    study_group: 'content',
+    concession: 'assessments',
+    reduced_load: 'assessments',
+    financial_support: 'worklife',
+    leave_of_absence: 'worklife',
+    one_on_ones: 'worklife',
+    referral: 'worklife',
+    alumni_mentor: 'careers',
+  };
+  return map[item?.type] ?? 'content';
+}
+
+/** Progress across a plan's checklist: how many actions are ticked done. */
+export function planChecklistSummary(plan) {
+  const items = (plan ?? []).filter((i) => i && (i.text || i.type));
+  const done = items.filter((i) => i.done).length;
+  return { total: items.length, done, pct: items.length ? Math.round((done / items.length) * 100) : 0 };
+}
+
+/* ───────────────── Marks + plan-derived academic standing ────────────────── */
+
+/** The student's average recorded mark (from the gradebook), or null. */
+export function markAverage(grades) {
+  const vals = Object.values(grades ?? {})
+    .map(Number)
+    .filter((v) => Number.isFinite(v));
+  if (!vals.length) return null;
+  return Math.round(vals.reduce((t, v) => t + v, 0) / vals.length);
+}
+
+const RISK_ORDER = { green: 0, amber: 1, red: 2, critical: 3 };
+const worseRisk = (a, b) => (a == null ? b : b == null ? a : RISK_ORDER[b] > RISK_ORDER[a] ? b : a);
+
+/**
+ * A frictionless academic standing derived from the DEVELOPMENT PLAN (the mentor's
+ * 1–5 ratings) and the student's REAL recorded marks — no subjective, manually
+ * captured attendance percentages. Real marks can only pull the standing down (an
+ * objective floor). Returns null risk when there's no plan to read.
+ */
+export function standingFromPlan(checkIn, avgMark) {
+  const sum = adpSummary(checkIn);
+  const mean = sum.mean;
+  let risk = mean == null ? null : mean >= 4 ? 'green' : mean >= 3 ? 'amber' : mean >= 2 ? 'red' : 'critical';
+  if (avgMark != null) {
+    const markRisk = avgMark >= 60 ? 'green' : avgMark >= 50 ? 'amber' : avgMark >= 45 ? 'red' : 'critical';
+    risk = worseRisk(risk, markRisk);
+  }
+  return {
+    risk: risk ?? 'unassessed',
+    mean,
+    meanBand: mean == null ? null : adpBand(Math.round(mean)),
+    avgMark: avgMark ?? null,
+    flaggedModules: sum.flaggedModules,
+    interventions: sum.interventions,
+    period: checkIn?.period,
+    updatedAt: checkIn?.completedAt ?? checkIn?.date,
+  };
 }
 
 /* ──────────────────────────────── Plan roll-ups ─────────────────────────── */

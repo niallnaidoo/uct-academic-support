@@ -63,6 +63,10 @@ import {
   interventionLabel,
   adpSummary,
   buildGradebook,
+  ACTION_SECTIONS,
+  actionSection,
+  planChecklistSummary,
+  markAverage,
 } from './academic-model.js';
 import {
   lookupCourse,
@@ -900,6 +904,11 @@ function AthleteDetail({ athleteId, checkIns, interventions, toast, onBack }) {
   const lastSeen = latestCompleted?.completedAt ?? latestCompleted?.date ?? null;
   const nextSession = latestPlan?.scheduledNext ?? null;
   const awaitingPlan = theirPlans.some((c) => c.planStatus === 'sent');
+  // Frictionless, plan-derived standing + real marks — replaces the manual metrics.
+  const standing = a.standing;
+  const hasStanding = standing?.risk && standing.risk !== 'unassessed';
+  const avgMark = markAverage(a.grades);
+  const checklist = planChecklistSummary(latestCompleted?.plan);
 
   return (
     <>
@@ -926,8 +935,18 @@ function AthleteDetail({ athleteId, checkIns, interventions, toast, onBack }) {
       </div>
 
       <div className="kpi-row">
-        <KPI label="Risk score" num={score != null ? score : '—'} sub="0–100" />
-        <KPI label="Semester avg" num={a.semesterAverage != null ? `${a.semesterAverage}%` : '—'} />
+        <KPI
+          label="Standing"
+          num={hasStanding ? standing.meanBand.tag : '—'}
+          sub={hasStanding ? `plan avg ${standing.mean.toFixed(1)} / 5` : 'no plan yet'}
+          tone={hasStanding && standing.risk !== 'green' ? 'amber' : ''}
+        />
+        <KPI
+          label="Average mark"
+          num={avgMark != null ? `${avgMark}%` : '—'}
+          sub={avgMark != null ? 'from recorded marks' : 'none recorded'}
+          tone={avgMark != null && avgMark < 50 ? 'amber' : ''}
+        />
         <KPI
           label="Credits"
           num={a.creditsRegistered ?? '—'}
@@ -970,45 +989,52 @@ function AthleteDetail({ athleteId, checkIns, interventions, toast, onBack }) {
       </Card>
 
       <Card
-        title="Live academic tracker"
-        sub={
-          a.assessedAt
-            ? `Last assessed ${formatDeadlineLong(a.assessedAt.slice(0, 10))}`
-            : 'Not yet assessed'
-        }
+        title="Academic standing"
+        sub="Built from the development plan and their real recorded marks — no manual, subjective metrics to keep up to date."
         action={
-          <Btn tone="primary" onClick={() => setEditingSnapshot(true)}>
-            Update snapshot
+          <Btn onClick={() => setEditingSnapshot(true)}>
+            Attendance snapshot
           </Btn>
         }
       >
-        {isAssessed(a) ? (
+        {hasStanding ? (
           <div className="metric-grid">
-            <Metric label="Lecture attendance" value={a.lectureAttendance} good={85} warn={70} />
-            <Metric label="Tutorial attendance" value={a.tutorialAttendance} good={85} warn={70} />
-            <Metric
-              label="Assignment completion"
-              value={a.assignmentCompletion}
-              good={85}
-              warn={80}
-            />
-            <Metric label="Semester average" value={a.semesterAverage} good={60} warn={50} />
             <div className="metric">
-              <div className="metric-label">Faculty warning</div>
+              <div className="metric-label">Overall</div>
               <div className="metric-value">
-                {a.facultyWarning === 'Yes' ? (
-                  <Pill tone="red">Yes</Pill>
-                ) : (
-                  <Pill tone="green">No</Pill>
-                )}
+                <Pill tone={standing.meanBand.tone}>{standing.meanBand.tag}</Pill>
               </div>
+              <div className="metric-sub">plan avg {standing.mean.toFixed(1)} / 5</div>
+            </div>
+            <div className="metric">
+              <div className="metric-label">Average mark</div>
+              <div className="metric-value">{avgMark != null ? `${avgMark}%` : '—'}</div>
+              <div className="metric-sub">
+                {avgMark != null ? 'recorded this term' : 'no marks yet'}
+              </div>
+            </div>
+            <div className="metric">
+              <div className="metric-label">Modules to watch</div>
+              <div className="metric-value">{standing.flaggedModules}</div>
+              <div className="metric-sub">flagged in the plan</div>
+            </div>
+            <div className="metric">
+              <div className="metric-label">Actions on track</div>
+              <div className="metric-value">
+                {checklist.done}
+                <span className="muted" style={{ fontSize: 15 }}>
+                  {' '}
+                  / {checklist.total}
+                </span>
+              </div>
+              <div className="metric-sub">student checklist</div>
             </div>
           </div>
         ) : (
           <EmptyState
             icon={Icon.Star}
-            title="No academic snapshot yet"
-            sub="Capture attendance, assignments, semester average and faculty-warning status to compute risk."
+            title="No development plan yet"
+            sub="Standing is built from the mentor's plan ratings and the student's real marks — run a development plan to populate it. No manual attendance capture needed."
           />
         )}
       </Card>
@@ -2423,20 +2449,25 @@ export function AdpWizard({ athlete, period, initial, onSubmit, onSaveDraft, onC
   const setSectionNote = (secKey, note) =>
     setSections((s) => ({ ...s, [secKey]: { ...s[secKey], note } }));
 
-  /* ── plan edits ── */
-  const toggleIntervention = (type) => {
+  /* ── action-checklist edits ── */
+  const toggleAction = (section, text) => {
     const id = nextId(); // outside the updater — StrictMode double-invokes updaters
     setPlan((p) => {
-      const existing = p.find((i) => i.type === type && !i.module);
+      const existing = p.find((i) => (i.section ?? actionSection(i)) === section && i.text === text);
       if (existing) return p.filter((i) => i !== existing);
-      return [
-        ...p,
-        { _id: id, type, module: '', referredTo: '', owner: '', dueDate: '', note: '' },
-      ];
+      return [...p, { _id: id, section, text, done: false }];
     });
   };
-  const setPlanField = (id, patch) =>
-    setPlan((p) => p.map((i) => (i._id === id ? { ...i, ...patch } : i)));
+  const addAction = (section, rawText) => {
+    const text = rawText.trim();
+    if (!text) return;
+    const id = nextId();
+    setPlan((p) =>
+      p.some((i) => (i.section ?? actionSection(i)) === section && i.text === text)
+        ? p
+        : [...p, { _id: id, section, text, done: false }],
+    );
+  };
   const removePlanItem = (id) => setPlan((p) => p.filter((i) => i._id !== id));
 
   const go = (i) => setStep(Math.max(0, Math.min(ADP_STEPS.length - 1, i)));
@@ -2470,14 +2501,13 @@ export function AdpWizard({ athlete, period, initial, onSubmit, onSaveDraft, onC
         cleanSections[sec.key] = { ratings: block.ratings, note: block.note || undefined };
       }
     }
-    const cleanPlan = plan.map((i) => ({
-      type: i.type,
-      module: i.module || undefined,
-      referredTo: i.referredTo || undefined,
-      owner: i.owner || undefined,
-      dueDate: i.dueDate || undefined,
-      note: i.note || undefined,
-    }));
+    const cleanPlan = plan
+      .filter((i) => i.text || i.type)
+      .map((i) =>
+        i.text
+          ? { section: i.section ?? actionSection(i), text: i.text, done: !!i.done }
+          : { type: i.type, module: i.module || undefined, done: !!i.done },
+      );
     const followUpRequired =
       cleanPlan.length || scored.some((m) => m.status === 'at_risk') ? 'Yes' : 'No';
 
@@ -2588,13 +2618,7 @@ export function AdpWizard({ athlete, period, initial, onSubmit, onSaveDraft, onC
         )}
 
         {stepKey === 'plan' && (
-          <PlanStep
-            plan={plan}
-            flagged={flagged}
-            onToggle={toggleIntervention}
-            onField={setPlanField}
-            onRemove={removePlanItem}
-          />
+          <PlanStep plan={plan} onToggle={toggleAction} onAdd={addAction} onRemove={removePlanItem} />
         )}
 
         {stepKey === 'review' && (
@@ -3020,97 +3044,128 @@ function StudentSectionStep({ section, block, onRate, onNote }) {
   );
 }
 
-function PlanStep({ plan, flagged, onToggle, onField, onRemove }) {
+function PlanStep({ plan, onToggle, onAdd, onRemove }) {
+  const chosen = planChecklistSummary(plan);
   return (
     <Card
-      title="Intervention plan"
-      sub="Choose the actions that come out of this plan. Each one is also logged in the intervention register."
+      title="Action checklist"
+      sub="Tick the concrete actions the student will do — grouped by area. They tick these off on their own link, so you can monitor progress. Add your own if needed."
+      action={
+        <span className="screen-tally">
+          <span className="dot tone-green" /> {chosen.total} action{chosen.total === 1 ? '' : 's'} set
+        </span>
+      }
     >
-      <div className="int-list">
-        {INTERVENTION_TYPES.map((t) => {
-          const items = plan.filter((i) => i.type === t.key);
-          const on = items.length > 0;
+      <div className="act-list">
+        {ACTION_SECTIONS.map((sec) => {
+          const picked = plan.filter((i) => (i.section ?? actionSection(i)) === sec.key);
+          const pickedText = new Set(picked.map((i) => i.text ?? interventionLabel(i)));
+          const custom = picked.filter((i) => !sec.items.includes(i.text ?? interventionLabel(i)));
           return (
-            <div key={t.key} className={`int-card ${on ? 'on' : ''}`}>
-              <button type="button" className="int-toggle" onClick={() => onToggle(t.key)}>
-                <span className={`int-check ${on ? 'on' : ''}`}>{on ? <Icon.Check /> : null}</span>
-                <span>
-                  <span className="int-name">{t.label}</span>
-                  <span className="int-desc">{t.desc}</span>
-                </span>
-              </button>
-              {items.map((item) => (
-                <div key={item._id} className="int-fields">
-                  {t.module && (
-                    <label className="fld">
-                      <span>Module</span>
-                      <select
-                        value={item.module}
-                        onChange={(e) => onField(item._id, { module: e.target.value })}
-                      >
-                        <option value="">— whole plan —</option>
-                        {flagged.map((m) => (
-                          <option key={m.code} value={m.code}>
-                            {m.code}
-                            {m.name ? ` · ${m.name}` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
-                  {t.referral && (
-                    <label className="fld">
-                      <span>Referred to</span>
-                      <select
-                        value={item.referredTo}
-                        onChange={(e) => onField(item._id, { referredTo: e.target.value })}
-                      >
-                        <option value="">— choose service —</option>
-                        {REFERRAL_TARGETS.map((r) => (
-                          <option key={r}>{r}</option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
-                  <label className="fld">
-                    <span>Owner</span>
-                    <input
-                      value={item.owner}
-                      onChange={(e) => onField(item._id, { owner: e.target.value })}
-                      placeholder="Who drives this?"
-                    />
-                  </label>
-                  <label className="fld">
-                    <span>Due</span>
-                    <input
-                      type="date"
-                      value={item.dueDate}
-                      onChange={(e) => onField(item._id, { dueDate: e.target.value })}
-                    />
-                  </label>
-                  <label className="fld" style={{ flexBasis: '100%' }}>
-                    <span>Note</span>
-                    <input
-                      value={item.note}
-                      onChange={(e) => onField(item._id, { note: e.target.value })}
-                      placeholder="Optional detail"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className="link-btn"
-                    onClick={() => onRemove(item._id)}
-                    style={{ alignSelf: 'center' }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
+            <div key={sec.key} className="act-sec">
+              <div className="act-sec-title">{sec.title}</div>
+              <div className="act-items">
+                {sec.items.map((text) => {
+                  const on = pickedText.has(text);
+                  return (
+                    <button
+                      key={text}
+                      type="button"
+                      className={`act-item ${on ? 'on' : ''}`}
+                      onClick={() => onToggle(sec.key, text)}
+                    >
+                      <span className={`act-check ${on ? 'on' : ''}`}>{on ? <Icon.Check /> : null}</span>
+                      <span>{text}</span>
+                    </button>
+                  );
+                })}
+                {custom.map((i) => (
+                  <div key={i._id} className="act-item on act-custom">
+                    <span className="act-check on">
+                      <Icon.Check />
+                    </span>
+                    <span>{i.text ?? interventionLabel(i)}</span>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => onRemove(i._id)}
+                      aria-label="Remove action"
+                    >
+                      <Icon.X />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <AddActionInput onAdd={(t) => onAdd(sec.key, t)} />
             </div>
           );
         })}
       </div>
     </Card>
+  );
+}
+
+/** Free-text input for a custom checklist action within a section. */
+function AddActionInput({ onAdd }) {
+  const [text, setText] = useState('');
+  const add = () => {
+    if (!text.trim()) return;
+    onAdd(text);
+    setText('');
+  };
+  return (
+    <div className="act-add">
+      <input
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
+        placeholder="Add your own action…"
+      />
+      <button type="button" className="act-add-btn" onClick={add} disabled={!text.trim()}>
+        <Icon.Plus /> Add
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Renders a plan's action checklist grouped by area. Read-only by default (for
+ * the mentor/office to monitor); pass `onToggle(index)` to make the student's
+ * items tickable (on their report link).
+ */
+export function ChecklistView({ plan, onToggle }) {
+  const items = plan ?? [];
+  return (
+    <div className="chk-view">
+      {ACTION_SECTIONS.map((sec) => {
+        const inSec = items.filter((i) => (i.section ?? actionSection(i)) === sec.key);
+        if (!inSec.length) return null;
+        return (
+          <div key={sec.key} className="chk-sec">
+            <div className="chk-sec-title">{sec.title}</div>
+            {inSec.map((i, idx) => {
+              const label = i.text ?? interventionLabel(i);
+              const done = !!i.done;
+              const clickable = !!onToggle;
+              const props = clickable
+                ? { type: 'button', onClick: () => onToggle(items.indexOf(i)) }
+                : {};
+              const Tag = clickable ? 'button' : 'div';
+              return (
+                <Tag
+                  key={i._id ?? `${sec.key}-${idx}`}
+                  className={`chk-item ${done ? 'done' : ''} ${clickable ? 'chk-click' : ''}`}
+                  {...props}
+                >
+                  <span className={`chk-box ${done ? 'on' : ''}`}>{done ? <Icon.Check /> : null}</span>
+                  <span className="chk-text">{label}</span>
+                </Tag>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -3480,20 +3535,16 @@ export function AdpDetail({ checkIn, athletes, onClose, onEdit, embedded = false
               );
             })}
 
-          {isAdp && plan.length > 0 && (
+          {isAdp && plan.length > 0 && !embedded && (
             <section className="det-sec">
-              <div className="det-sec-title">Intervention plan</div>
-              <ul className="det-plan">
-                {plan.map((i, idx) => (
-                  <li key={idx}>
-                    <strong>{interventionLabel(i)}</strong>
-                    {i.owner ? ` — ${i.owner}` : ''}
-                    {i.dueDate ? ` · due ${formatDeadlineLong(i.dueDate)}` : ''}
-                    {i.referredTo ? ` · → ${i.referredTo}` : ''}
-                    {i.note ? <div className="muted det-plan-note">{i.note}</div> : null}
-                  </li>
-                ))}
-              </ul>
+              <div className="det-sec-title">
+                Action checklist
+                <span className="det-sec-note">
+                  {' '}
+                  · {planChecklistSummary(plan).done} of {planChecklistSummary(plan).total} done
+                </span>
+              </div>
+              <ChecklistView plan={plan} />
             </section>
           )}
 

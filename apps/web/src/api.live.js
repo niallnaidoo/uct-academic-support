@@ -79,6 +79,8 @@ export const getMentorPlan = (id, token) =>
   req(`/mentor-plan/${id}?t=${encodeURIComponent(token)}`, { auth: false });
 export const submitMentorPlan = (id, token, body) =>
   req(`/mentor-plan/${id}?t=${encodeURIComponent(token)}`, { method: 'POST', body, auth: false });
+export const setPlanProgress = (id, token, body) =>
+  req(`/mentor-plan/${id}/progress?t=${encodeURIComponent(token)}`, { method: 'POST', body, auth: false });
 
 // Student gradebook — admin mints the link; the student reads/writes marks with
 // the token only (no auth). Endpoints for the dev team to add; see README.

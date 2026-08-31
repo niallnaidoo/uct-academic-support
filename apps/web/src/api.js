@@ -37,6 +37,7 @@ export const deleteIntervention = (...a) => impl.deleteIntervention(...a);
 
 export const getMentorPlan = (...a) => impl.getMentorPlan(...a);
 export const submitMentorPlan = (...a) => impl.submitMentorPlan(...a);
+export const setPlanProgress = (...a) => impl.setPlanProgress(...a);
 
 export const createGradebookLink = (...a) => impl.createGradebookLink(...a);
 export const getGradebook = (...a) => impl.getGradebook(...a);

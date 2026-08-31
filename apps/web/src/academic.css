@@ -1407,3 +1407,191 @@ a.btn {
     width: 40px;
   }
 }
+
+/* ═══════════════════ Action checklist (plan step) ═══════════════════ */
+.act-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.act-sec-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--green-mid);
+  margin-bottom: 10px;
+}
+.act-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.act-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.act-item:hover {
+  border-color: var(--muted-2);
+}
+.act-item.on {
+  border-color: var(--green-bright);
+  background: var(--green-pale);
+}
+.act-check {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid var(--muted-3);
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+.act-check.on {
+  background: var(--green-bright);
+  border-color: var(--green-bright);
+}
+.act-check svg {
+  width: 13px;
+  height: 13px;
+}
+.act-custom {
+  cursor: default;
+}
+.act-custom .icon-btn {
+  margin-left: auto;
+}
+.act-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.act-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 11px;
+  border: 1px dashed var(--muted-3);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 13px;
+  background: var(--paper);
+}
+.act-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: var(--green);
+  color: #fff;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 99px;
+  cursor: pointer;
+}
+.act-add-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.act-add-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ═══════════════════ Checklist view (detail + report) ═══════════════════ */
+.chk-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.chk-sec-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.chk-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.chk-click {
+  cursor: pointer;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  background: var(--white);
+}
+.chk-click:hover {
+  border-color: var(--green-bright);
+}
+.chk-box {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid var(--muted-3);
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+.chk-box.on {
+  background: var(--green-bright);
+  border-color: var(--green-bright);
+}
+.chk-box svg {
+  width: 13px;
+  height: 13px;
+}
+.chk-item.done .chk-text {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.det-sec-note {
+  font-weight: 400;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.metric-sub {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Report page: interactive student checklist */
+.report-checklist {
+  max-width: 1040px;
+  margin: 0 auto 16px;
+}
+.report-checklist-body {
+  padding: 14px 18px 18px;
+}
+.report-checklist-body > .muted {
+  font-size: 13px;
+  margin: 0 0 12px;
+}
