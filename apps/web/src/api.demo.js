@@ -57,6 +57,9 @@ export const DEFAULT_SETTINGS = {
   contactEmail: 'academics@ikeys.uct.ac.za',
   squads: ['1st Team', 'U20s', 'Both', 'General'],
   admins: [{ name: 'Programme Administrator', email: 'admin@ikeys.uct.ac.za' }],
+  // ElevenLabs public agent id — set this to turn on the AI voice mentor for
+  // every AI-mentor link across the platform. Blank = the keyless demo voice.
+  elevenAgentId: '',
 };
 
 /** Fill in any keys a persisted (older) db is missing. */

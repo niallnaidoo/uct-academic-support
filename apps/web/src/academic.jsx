@@ -3904,6 +3904,7 @@ function SettingsForm({ settings, toast }) {
     sport: settings.sport ?? '',
     programmeName: settings.programmeName ?? 'Academic Support',
     contactEmail: settings.contactEmail ?? '',
+    elevenAgentId: settings.elevenAgentId ?? '',
   });
   const [squads, setSquads] = useState(settings.squads?.length ? settings.squads : ['']);
   const [admins, setAdmins] = useState(
@@ -4054,6 +4055,26 @@ function SettingsForm({ settings, toast }) {
         <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
           In this demo, sign-in uses a shared password. In production each administrator signs in
           with your institution’s single sign-on — this list controls who has access.
+        </p>
+      </Card>
+
+      <Card
+        title="AI voice mentor (ElevenLabs)"
+        sub="Paste a public ElevenLabs agent id to turn on the AI voice mentor for every AI-mentor link. Leave blank to use the built-in demo voice. See docs/AI_MENTOR.md to create the agent."
+      >
+        <label className="fld">
+          <span>ElevenLabs agent id</span>
+          <input
+            value={org.elevenAgentId}
+            onChange={(e) => setOrgField({ elevenAgentId: e.target.value.trim() })}
+            placeholder="agent_xxxxxxxxxxxxxxxxxxxx"
+          />
+        </label>
+        <p className="muted" style={{ fontSize: 12 }}>
+          {org.elevenAgentId
+            ? '✓ Live voice on — AI-mentor links will connect to this agent (this browser).'
+            : 'Off — AI-mentor links use the demo voice.'}{' '}
+          Your API key is never stored here; it only lives in the ElevenLabs dashboard.
         </p>
       </Card>
 

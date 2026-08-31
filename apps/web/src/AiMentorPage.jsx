@@ -65,6 +65,17 @@ export function AiMentorPage() {
       .getMentorPlan(id, token)
       .then((p) => live && setPlan(p))
       .catch((e) => live && setError(e.message || 'This link is not valid.'));
+    // Platform-wide activation: if an admin set the ElevenLabs agent in Settings,
+    // use it (unless this link already carries its own ?agent= / saved id).
+    api
+      .getSettings()
+      .then((s) => {
+        if (live && s?.elevenAgentId && !getAgentId()) {
+          saveAgentId(s.elevenAgentId);
+          force((n) => n + 1);
+        }
+      })
+      .catch(() => {});
     return () => {
       live = false;
       try {
