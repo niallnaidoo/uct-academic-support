@@ -29,7 +29,11 @@ jobs:
           node-version: 20
       - name: Install web deps
         working-directory: apps/web
-        run: npm install
+        # Drop the lockfile so npm resolves the platform-specific optional deps
+        # (rollup's linux binary) fresh on the CI runner — works around npm/cli#4828.
+        run: |
+          rm -f package-lock.json
+          npm install --no-audit --no-fund
       - name: Build demo
         working-directory: apps/web
         env:
