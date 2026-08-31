@@ -58,6 +58,35 @@ schemas are in `AI_MENTOR_TOOLS` (`aiMentor.js`); the system prompt is
 
 ---
 
+## Quick demo (public agent — no server, no key in the app)
+
+For an illustration you don't need the signed-URL server. Create a **public
+agent** in the ElevenLabs dashboard and connect to it by id:
+
+1. **ElevenLabs → Conversational AI → Create agent.**
+   - **System prompt:** paste `AI_MENTOR_PROMPT` from `aiMentor.js` verbatim (it
+     declares the `{{first_name}}`, `{{period}}`, `{{modules}}` variables).
+   - **First message:** e.g. `Hi {{first_name}} — ready when you are?`
+   - **Voice / language:** pick a warm English voice.
+   - *(Optional, for the plan to auto-fill/submit)* add the six **client tools**
+     from `AI_MENTOR_TOOLS` (name + params). Skip them for a conversation-only
+     illustration.
+2. **Security → make the agent public** (allow connection without a signed URL).
+   Leave overrides off — the prompt lives on the agent.
+3. **Copy the agent id** (`agent_…`).
+4. **Run it** — no rebuild needed. Open a plan's AI-mentor link with the id
+   appended, or paste the id into the page's *Connect a live ElevenLabs agent*
+   field:
+   ```
+   …/#/ai-mentor/<planId>?t=<token>&agent=<agent_id>
+   ```
+   The page shows **“ElevenLabs voice”**, asks for the microphone, and the agent
+   talks the student through the plan. Test it first with the dashboard's own
+   *Test agent* button.
+
+The API key is used **only in the dashboard** to build the agent — never in the
+browser or the repo. Rotate any key that's been shared in chat/email.
+
 ## Going live (production)
 
 1. **Create the agent** in the ElevenLabs dashboard. Paste `AI_MENTOR_PROMPT` as

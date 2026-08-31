@@ -13,7 +13,12 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import * as api from './api.js';
 import { Btn, Icon } from './atoms.jsx';
 import { makeCollector, mockMentorScript } from './aiMentor.js';
-import { elevenLabsConfigured, startElevenLabsSession } from './aiMentorElevenLabs.js';
+import {
+  elevenLabsConfigured,
+  startElevenLabsSession,
+  getAgentId,
+  saveAgentId,
+} from './aiMentorElevenLabs.js';
 import { ADP_SECTION_META } from './academic-model.js';
 import './academic.css';
 
@@ -42,6 +47,8 @@ export function AiMentorPage() {
   const [messages, setMessages] = useState([]);
   const [choices, setChoices] = useState(null);
   const [speaking, setSpeaking] = useState(false);
+  const [agentInput, setAgentInput] = useState('');
+  const [showSetup, setShowSetup] = useState(false);
   const [, force] = useState(0); // re-render when the live plan mutates
 
   const sess = useRef(null); // { tools, buildPayload, collected }
@@ -69,6 +76,28 @@ export function AiMentorPage() {
     };
   }, [id, token]);
 
+  // A mid-session error (mic/voice) — offer a retry rather than a dead end.
+  if (error && plan && phase === 'error') {
+    return (
+      <div className="mentor-page">
+        <div className="mentor-card">
+          <h1>Couldn’t start the voice session</h1>
+          <p className="muted">{error}</p>
+          <Btn
+            tone="primary"
+            onClick={() => {
+              submitted.current = false;
+              setMessages([]);
+              setError(null);
+              setPhase('intro');
+            }}
+          >
+            Try again
+          </Btn>
+        </div>
+      </div>
+    );
+  }
   if (error || (plan && plan.planStatus === 'completed' && phase === 'intro')) {
     const done = plan?.planStatus === 'completed';
     return (
@@ -95,6 +124,22 @@ export function AiMentorPage() {
   }
 
   const firstName = (plan.athleteName ?? '').split(' ')[0];
+  const live = elevenLabsConfigured();
+
+  function endLive() {
+    try {
+      elCtl.current?.end?.();
+    } catch {
+      /* ignore */
+    }
+    if (sess.current && !submitted.current) {
+      const has =
+        Object.keys(sess.current.collected.screener).length ||
+        Object.keys(sess.current.collected.areas).length;
+      if (has) return doSubmit();
+    }
+    setPhase('done');
+  }
 
   function buildCtx() {
     return {
@@ -142,14 +187,25 @@ export function AiMentorPage() {
 
   async function startSession() {
     const s = initSession();
-    setPhase('running');
     if (elevenLabsConfigured()) {
-      // Production: live ElevenLabs voice agent drives the tools.
+      // Live ElevenLabs voice agent drives the same tools.
+      setPhase('connecting');
       try {
         elCtl.current = await startElevenLabsSession(s.ctx, s.tools, {
           onMessage: (m) => setMessages((xs) => [...xs, m]),
-          onState: (st) => setSpeaking(st === 'speaking'),
-          onError: (e) => setError(e.message || 'Voice session error.'),
+          onState: (st) => {
+            if (st === 'ended') return endLive();
+            setPhase('running');
+            setSpeaking(st === 'speaking');
+          },
+          onError: (e) => {
+            setError(
+              /permission|denied|microphone|NotAllowed/i.test(e.message || '')
+                ? 'Microphone access is needed for the voice session — allow it and try again.'
+                : e.message || 'Voice session error.',
+            );
+            setPhase('error');
+          },
         });
       } catch (e) {
         setError(e.message || 'Could not start the AI mentor.');
@@ -158,6 +214,7 @@ export function AiMentorPage() {
       return;
     }
     // Demo: scripted mock agent + speech synthesis.
+    setPhase('running');
     gen.current = mockMentorScript(s.ctx, s.tools);
     advance();
   }
@@ -221,7 +278,7 @@ export function AiMentorPage() {
       <div className="mentor-intro">
         <div className="ai-badge">
           <Icon.Live /> AI academic mentor
-          {!elevenLabsConfigured() && <span className="ai-demo-tag">demo voice</span>}
+          <span className="ai-demo-tag">{live ? 'ElevenLabs voice' : 'demo voice'}</span>
         </div>
         <h1>
           {plan.athleteName}
@@ -241,29 +298,79 @@ export function AiMentorPage() {
               <span />
               <span />
             </span>
-            <span className="muted">{phase === 'running' ? (speaking ? 'Mentor speaking…' : 'Your turn') : 'Ready'}</span>
-            <button
-              type="button"
-              className="ai-mute"
-              onClick={() => setMuted((m) => !m)}
-              aria-label={muted ? 'Unmute' : 'Mute'}
-            >
-              {muted ? 'Unmute 🔇' : 'Mute 🔊'}
-            </button>
+            <span className="muted">
+              {phase === 'running'
+                ? speaking
+                  ? 'Mentor speaking…'
+                  : live
+                    ? 'Listening…'
+                    : 'Your turn'
+                : phase === 'connecting'
+                  ? 'Connecting…'
+                  : 'Ready'}
+            </span>
+            {phase === 'running' && live ? (
+              <button type="button" className="ai-mute" onClick={endLive}>
+                End session
+              </button>
+            ) : (
+              !live && (
+                <button type="button" className="ai-mute" onClick={() => setMuted((m) => !m)}>
+                  {muted ? 'Unmute 🔇' : 'Mute 🔊'}
+                </button>
+              )
+            )}
           </div>
 
-          {phase === 'intro' ? (
+          {phase === 'intro' || phase === 'connecting' ? (
             <div className="ai-start">
               <p className="muted">
-                It’s a friendly, spoken conversation — you can tap your answers. Ready when you are.
+                {live
+                  ? 'A live voice conversation — you’ll be asked to allow your microphone, then just talk naturally.'
+                  : 'It’s a friendly, spoken conversation — you can tap your answers. Ready when you are.'}
               </p>
-              <Btn tone="primary" icon={Icon.Live} onClick={startSession}>
-                Start the session
+              <Btn tone="primary" icon={Icon.Live} onClick={startSession} disabled={phase === 'connecting'}>
+                {phase === 'connecting' ? 'Connecting…' : live ? 'Start voice session' : 'Start the session'}
               </Btn>
+
+              <div className="ai-setup">
+                <button type="button" className="ai-setup-toggle" onClick={() => setShowSetup((s) => !s)}>
+                  {live ? 'Live ElevenLabs agent connected' : 'Connect a live ElevenLabs agent'} ▾
+                </button>
+                {showSetup && (
+                  <div className="ai-setup-body">
+                    <p className="muted">
+                      Paste a <strong>public</strong> ElevenLabs agent id to run the real voice agent
+                      instead of the demo. Nothing is sent anywhere else; it’s saved only in this
+                      browser.
+                    </p>
+                    <div className="ai-setup-row">
+                      <input
+                        value={agentInput}
+                        onChange={(e) => setAgentInput(e.target.value)}
+                        placeholder={getAgentId() || 'agent_xxxxxxxxxxxxxxxx'}
+                      />
+                      <button
+                        type="button"
+                        className="act-add-btn"
+                        onClick={() => {
+                          saveAgentId(agentInput.trim());
+                          window.location.reload();
+                        }}
+                      >
+                        {agentInput.trim() ? 'Use it' : 'Clear'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <>
               <div className="ai-messages">
+                {messages.length === 0 && live && (
+                  <div className="ai-msg ai-mentor">Say hello when you’re ready…</div>
+                )}
                 {messages.map((m, i) => (
                   <div key={i} className={`ai-msg ai-${m.role}`}>
                     {m.text}

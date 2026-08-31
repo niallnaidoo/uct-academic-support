@@ -1,75 +1,91 @@
 /**
- * ElevenLabs Conversational-AI transport for the AI mentor (PRODUCTION path).
+ * ElevenLabs Conversational-AI transport for the AI mentor.
  *
- * This is not exercised in the hosted demo (no key) — it documents and implements
- * exactly how to go live. Enable it by setting:
- *   VITE_ELEVENLABS_AGENT_ID   — your Conversational-AI agent id
- *   VITE_ELEVENLABS_SIGNED_URL — your server endpoint that mints a signed URL
- * and configuring the agent in the ElevenLabs dashboard with the prompt from
- * `AI_MENTOR_PROMPT` and the client tools from `AI_MENTOR_TOOLS`.
+ * For a demo, point it at a PUBLIC agent (created in the ElevenLabs dashboard):
+ * the browser connects by agent id alone — no API key, nothing secret in the app
+ * or the repo. The agent id is read at runtime so no rebuild is needed:
+ *   • ?agent=<id> in the URL, or
+ *   • localStorage 'uct-ai-agent' (set via the page's setup field), or
+ *   • VITE_ELEVENLABS_AGENT_ID at build time.
  *
- * The API key NEVER touches the browser: your server calls ElevenLabs'
- * `get_signed_url` with the key and returns the short-lived signed URL. See
- * docs/AI_MENTOR.md for the (tiny) server contract.
+ * For a private agent, set VITE_ELEVENLABS_SIGNED_URL to your server endpoint
+ * that mints a signed URL with your secret key (see docs/AI_MENTOR.md).
  */
-import { AI_MENTOR_PROMPT } from './aiMentor.js';
+import { Conversation } from '@elevenlabs/client';
 
-const AGENT_ID = import.meta.env.VITE_ELEVENLABS_AGENT_ID;
+const AGENT_STORE_KEY = 'uct-ai-agent';
+
+/** Resolve the agent id from the URL, saved config, or build env (in that order). */
+export function getAgentId() {
+  try {
+    const fromUrl = new URLSearchParams(window.location.hash.split('?')[1] || window.location.search).get('agent');
+    if (fromUrl) return fromUrl.trim();
+    const saved = localStorage.getItem(AGENT_STORE_KEY);
+    if (saved) return saved.trim();
+  } catch {
+    /* ignore */
+  }
+  return import.meta.env.VITE_ELEVENLABS_AGENT_ID || '';
+}
+
+export function saveAgentId(id) {
+  try {
+    if (id) localStorage.setItem(AGENT_STORE_KEY, id.trim());
+    else localStorage.removeItem(AGENT_STORE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 const SIGNED_URL_ENDPOINT = import.meta.env.VITE_ELEVENLABS_SIGNED_URL;
-// The SDK is loaded at runtime (only when a real session starts) so it never
-// weighs on the demo build. In production, prefer bundling `@elevenlabs/client`
-// and importing it directly instead of this URL.
-const SDK_URL = import.meta.env.VITE_ELEVENLABS_SDK_URL || 'https://esm.sh/@elevenlabs/client@0.1';
+const CONNECTION_TYPE = import.meta.env.VITE_ELEVENLABS_CONNECTION || 'webrtc';
 
-export const elevenLabsConfigured = () => !!(AGENT_ID && SIGNED_URL_ENDPOINT);
+/** True when a live session can be started (a public agent id, or a signed-url server). */
+export const elevenLabsConfigured = () => !!(getAgentId() || SIGNED_URL_ENDPOINT);
 
 /**
  * Start a live ElevenLabs mentor session.
  *
- * @param ctx        per-student context (firstName, period, modules, suggestedNext)
- * @param tools      the client-tool implementations from makeCollector()
- * @param callbacks  { onMessage({role,text}), onState('connecting'|'listening'|'speaking'|'ended'), onError(e) }
- * @returns          a controller with `end()`
+ * @param ctx        { firstName, period, modules }
+ * @param tools      client-tool implementations from makeCollector()
+ * @param callbacks  { onMessage({role,text}), onState('connecting'|'listening'|'speaking'|'ended'), onError(Error) }
+ * @returns          { end() }
  */
 export async function startElevenLabsSession(ctx, tools, callbacks = {}) {
   const { onMessage = () => {}, onState = () => {}, onError = () => {} } = callbacks;
   onState('connecting');
 
-  // 1. Ask OUR server for a short-lived signed URL (keeps the API key server-side).
-  const res = await fetch(`${SIGNED_URL_ENDPOINT}?agent_id=${encodeURIComponent(AGENT_ID)}`);
-  if (!res.ok) throw new Error('Could not start the AI mentor (signed-url endpoint failed).');
-  const { signed_url: signedUrl } = await res.json();
+  // Wrap each tool so the SDK always gets a string back for the model.
+  const clientTools = Object.fromEntries(
+    Object.entries(tools).map(([name, fn]) => [name, async (params) => String(fn(params) ?? 'ok')]),
+  );
 
-  // 2. Load the SDK and open the realtime voice session.
-  const { Conversation } = await import(/* @vite-ignore */ SDK_URL);
-
-  const conversation = await Conversation.startSession({
-    signedUrl,
-    // Inject the per-student facts + prompt at runtime (or bake them into the agent).
-    overrides: {
-      agent: {
-        prompt: { prompt: AI_MENTOR_PROMPT },
-        firstMessage: `Hi ${ctx.firstName || 'there'} — ready when you are.`,
-      },
-    },
+  const common = {
+    connectionType: CONNECTION_TYPE,
+    clientTools,
+    // The agent's prompt declares these; we fill in the real student.
     dynamicVariables: {
       first_name: ctx.firstName ?? '',
       period: ctx.period ?? '',
-      modules: (ctx.modules ?? []).map((m) => `${m.code}${m.name ? ` (${m.name})` : ''}`).join(', '),
+      modules: (ctx.modules ?? []).map((m) => `${m.code}${m.name ? ` (${m.name})` : ''}`).join(', ') || 'their registered modules',
     },
-    // 3. The agent's function calls run OUR tool implementations, which build the
-    //    plan and submit it — the same tools the mock uses. Wrap each so a plain
-    //    string is returned to the model.
-    clientTools: Object.fromEntries(
-      Object.entries(tools).map(([name, fn]) => [name, async (params) => String(fn(params) ?? 'ok')]),
-    ),
     onConnect: () => onState('listening'),
     onDisconnect: () => onState('ended'),
-    onError: (e) => onError(e),
+    onError: (msg) => onError(new Error(typeof msg === 'string' ? msg : 'Voice session error')),
     onModeChange: ({ mode }) => onState(mode === 'speaking' ? 'speaking' : 'listening'),
-    onMessage: ({ source, message }) =>
-      onMessage({ role: source === 'ai' ? 'mentor' : 'student', text: message }),
-  });
+    onMessage: ({ message, source, role }) =>
+      onMessage({ role: (source ?? role) === 'ai' || role === 'agent' ? 'mentor' : 'student', text: message }),
+  };
 
-  return { end: () => conversation.endSession() };
+  let session;
+  if (SIGNED_URL_ENDPOINT) {
+    const res = await fetch(`${SIGNED_URL_ENDPOINT}?agent_id=${encodeURIComponent(getAgentId())}`);
+    if (!res.ok) throw new Error('Could not start the AI mentor (signed-url endpoint failed).');
+    const { signed_url: signedUrl } = await res.json();
+    session = await Conversation.startSession({ signedUrl, ...common });
+  } else {
+    session = await Conversation.startSession({ agentId: getAgentId(), ...common });
+  }
+
+  return { end: () => session.endSession() };
 }
