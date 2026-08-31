@@ -99,11 +99,11 @@ Run the session in this order, ONE question at a time, in plain, friendly langua
 
 Voice & style — this is a spoken chat, so sound like a real, relaxed person, not a form:
 - Warm and human. Use the student's name now and then. Contractions, everyday words, short sentences.
-- ONE thing at a time. Ask a question, then stop and actually listen. Never stack two questions.
-- Always react first, then ask. Reflect what you heard in a few words ("ah, on and off — that's really common in season") before the next question. Little affirmations are good ("got it", "no stress", "love that").
-- Draw them out with open questions and gentle follow-ups rather than yes/no checklists — e.g. "how's [module] actually feeling?", "walk me through a normal week", "where do you picture this taking you?".
-- Vary your phrasing; don't repeat the same stem. Keep it moving, keep it light, but let them talk.
-- Numbers are for you, not them: instead of "rate 1 to 5", ask how it's going and then privately map it to a score for the tools.
+- EXACTLY ONE question per turn — this is the most important rule. End every turn on a single, plain question mark, then stop and listen. Never ask two questions in one turn. Never use an "or" that turns it into two questions ("are you attending, or is it patchy?") — just ask the one thing directly ("are you getting to your lectures?"). Don't tack a second question on after they answer the first.
+- A brief reaction before the question is good — reflect what you heard in a few words ("ah, on and off — really common in season") and add little affirmations ("got it", "no stress", "love that") — but the question that follows must be a single, simple one.
+- Draw them out with open questions — "how's [module] feeling?", "how's your week looking?", "where do you picture this taking you?" — one at a time.
+- Vary your phrasing; keep it light, but let them talk.
+- Numbers are for you, not them: instead of "rate 1 to 5", ask how it's going and privately map it to a score for the tools.
 
 Safety: if the student sounds distressed, overwhelmed, unsafe, or mentions self-harm, money or housing crisis, immediately call flag_wellbeing, warmly tell them you're making sure a person from the office reaches out today, and gently continue only if they're comfortable. Give no medical, legal or financial advice — route to the relevant service. Record facts with the tools as you go; don't wait until the end.`;
 
@@ -235,7 +235,7 @@ export async function* mockMentorScript(ctx, tools) {
   for (const m of modules) {
     const label = m.name || m.code;
     const attendRaw = yield {
-      text: `Let's start with ${label}. Be honest with me — are you actually getting to the lectures and tuts, or is it a bit hit-and-miss?`,
+      text: `Let's start with ${label}. Be honest — are you getting to your lectures and tutorials?`,
       choices: ['Yeah, mostly', 'On and off', 'Not really'],
     };
     const r1 =
@@ -245,7 +245,7 @@ export async function* mockMentorScript(ctx, tools) {
           ? `Yeah, on and off — super common, especially in season.`
           : `Nice, that's a solid base already.`;
     const followRaw = yield {
-      text: `${r1} And when you're in there — is the content clicking, or does some of it go a bit over your head?`,
+      text: `${r1} And is the content making sense so far?`,
       choices: ['Following it', 'Sort of', 'Honestly lost'],
     };
     const r2 =
@@ -255,7 +255,7 @@ export async function* mockMentorScript(ctx, tools) {
           ? `Got it, so there are a few gaps.`
           : `Love that.`;
     const assessRaw = yield {
-      text: `${r2} How about the tests and assignments — you keeping up, or feeling a bit behind?`,
+      text: `${r2} Are you keeping up with the tests and assignments?`,
       choices: ['Keeping up', 'A bit behind', 'Pretty behind'],
     };
     tools.screen_module({
@@ -268,10 +268,10 @@ export async function* mockMentorScript(ctx, tools) {
   }
 
   const AREAS = [
-    { key: 'content', q: `Let's zoom out a bit. Overall, how's the actual learning feeling for you this term — are you on top of it or is it a grind right now?` },
-    { key: 'assessments', q: `And when you think about all the deadlines and exams coming up — how's that sitting with you?` },
-    { key: 'worklife', q: `Now the real one — juggling training, matches and studying. How are you holding up with all of it?` },
-    { key: 'careers', q: `Last thing — do you have a sense of where this degree is taking you, or is that still pretty fuzzy?` },
+    { key: 'content', q: `Let's zoom out. Overall, how's the learning feeling for you this term?` },
+    { key: 'assessments', q: `And how are you feeling about the deadlines and exams coming up?` },
+    { key: 'worklife', q: `Now the big one — how are you holding up juggling training and study?` },
+    { key: 'careers', q: `Last one — how clear are you on where this degree is taking you?` },
   ];
   const scaleChoices = ['Really struggling', 'Bit of a grind', 'Okay', 'Pretty good', 'Nailing it'];
   const scaleToScore = { 'Really struggling': 1, 'Bit of a grind': 2, Okay: 3, 'Pretty good': 4, 'Nailing it': 5 };
