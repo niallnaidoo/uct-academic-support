@@ -189,7 +189,12 @@ export function AcademicModule({ toast }) {
         <AthletesTab athletes={athletes} squads={squads} toast={toast} onOpen={setOpenAthlete} />
       )}
       {tab === 'tracker' && (
-        <TrackerTab athletes={athletes} toast={toast} onOpen={setOpenAthlete} />
+        <TrackerTab
+          athletes={athletes}
+          checkIns={checkIns}
+          toast={toast}
+          onOpen={setOpenAthlete}
+        />
       )}
       {tab === 'checkins' && (
         <CheckInsTab athletes={athletes} checkIns={checkIns} mentors={mentors} toast={toast} />
@@ -1330,88 +1335,139 @@ function SnapshotEditor({ athlete, onClose, toast }) {
 
 /* ═══════════════════════════ Live tracker table ═════════════════════════ */
 
-function TrackerTab({ athletes, toast, onOpen }) {
-  const [editing, setEditing] = useState(null);
-  const assessed = athletes.filter(isAssessed);
-  const rows = [...athletes].sort(
-    (a, b) => RISK_META[academicRisk(b)].order - RISK_META[academicRisk(a)].order,
+/** Colour a 1–5 area average like the RAG scale. */
+const areaTone = (v) => (v == null ? '' : v >= 4 ? 'green' : v >= 3 ? 'amber' : 'red');
+const AreaVal = ({ v }) =>
+  v == null ? (
+    <span className="muted">—</span>
+  ) : (
+    <span className={`trk-val ${areaTone(v)}`}>{v.toFixed(1)}</span>
   );
 
+function TrackerTab({ athletes, checkIns, onOpen }) {
+  const [onlyFlagged, setOnlyFlagged] = useState(false);
+
+  // The latest completed development plan per student — the tracker draws from
+  // these + real marks rather than a manual snapshot.
+  const latest = {};
+  for (const c of checkIns) {
+    const done = c.kind === ADP_KIND && (c.planStatus === 'completed' || !c.planStatus);
+    if (!done) continue;
+    const t = c.completedAt ?? c.date ?? '';
+    const cur = latest[c.studentNumber];
+    if (!cur || t > (cur.completedAt ?? cur.date ?? '')) latest[c.studentNumber] = c;
+  }
+
+  const rowData = athletes
+    .map((a) => {
+      const plan = latest[a.studentNumber];
+      const areas = plan ? sectionAverages(plan) : [];
+      const areaVal = (key) => areas.find((v) => v.key === key)?.value ?? null;
+      const sum = plan ? adpSummary(plan) : null;
+      return {
+        a,
+        plan,
+        risk: academicRisk(a),
+        load: a.modules?.length ?? 0,
+        flagged: sum?.flaggedModules ?? 0,
+        content: areaVal('content'),
+        assessments: areaVal('assessments'),
+        worklife: areaVal('worklife'),
+        careers: areaVal('careers'),
+        avgMark: markAverage(a.grades),
+        actions: planChecklistSummary(plan?.plan),
+      };
+    })
+    .sort((x, y) => RISK_META[y.risk].order - RISK_META[x.risk].order);
+  const shown = onlyFlagged ? rowData.filter((r) => r.flagged > 0 || r.risk === 'red' || r.risk === 'critical') : rowData;
+  const withPlan = rowData.filter((r) => r.plan).length;
+
   return (
-    <>
-      {editing && (
-        <SnapshotEditor athlete={editing} onClose={() => setEditing(null)} toast={toast} />
-      )}
-      <Card
-        title="Live academic tracker"
-        sub={`${assessed.length} of ${athletes.length} assessed · attendance, assignments, semester average → RAG risk.`}
-      >
-        {athletes.length === 0 ? (
-          <EmptyState
-            icon={Icon.Star}
-            title="No athletes yet"
-            sub="Add your squad on the Athletes tab."
-          />
-        ) : (
-          <div className="scroll-x">
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>Athlete</th>
-                  <th>Lecture</th>
-                  <th>Tutorial</th>
-                  <th>Assign.</th>
-                  <th>Sem. avg</th>
-                  <th>Fac. warn</th>
-                  <th>Risk</th>
-                  <th>Score</th>
-                  <th />
+    <Card
+      title="Academic tracker"
+      sub={`Course load, flagged modules and where each student sits across the four development areas — drawn from their latest plan and real recorded marks. ${withPlan} of ${athletes.length} have a plan.`}
+      action={
+        <button
+          type="button"
+          className={`gb-toggle ${onlyFlagged ? 'on' : ''}`}
+          onClick={() => setOnlyFlagged((v) => !v)}
+        >
+          {onlyFlagged ? 'Show all' : 'Only flagged'}
+        </button>
+      }
+    >
+      {athletes.length === 0 ? (
+        <EmptyState icon={Icon.Star} title="No athletes yet" sub="Add your squad on the Athletes tab." />
+      ) : (
+        <div className="scroll-x">
+          <table className="tbl trk-tbl">
+            <thead>
+              <tr>
+                <th>Athlete</th>
+                <th>Modules</th>
+                <th>Flagged</th>
+                <th>Content</th>
+                <th>Assess.</th>
+                <th>Work-life</th>
+                <th>Careers</th>
+                <th>Avg mark</th>
+                <th>Actions</th>
+                <th>Standing</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((r) => (
+                <tr key={r.a.id} className={`risk-row risk-${r.risk}`}>
+                  <td>
+                    <button className="linklike" onClick={() => onOpen(r.a.id)}>
+                      <strong>
+                        {r.a.firstName} {r.a.lastName}
+                      </strong>
+                    </button>
+                    <div className="muted" style={{ fontSize: 12 }}>
+                      {r.a.studentNumber}
+                    </div>
+                  </td>
+                  <td>
+                    {r.load || <span className="muted">—</span>}
+                  </td>
+                  <td>{r.flagged > 0 ? <Pill tone="amber">{r.flagged}</Pill> : <span className="muted">—</span>}</td>
+                  <td>
+                    <AreaVal v={r.content} />
+                  </td>
+                  <td>
+                    <AreaVal v={r.assessments} />
+                  </td>
+                  <td>
+                    <AreaVal v={r.worklife} />
+                  </td>
+                  <td>
+                    <AreaVal v={r.careers} />
+                  </td>
+                  <td>
+                    {r.avgMark != null ? (
+                      <span className={r.avgMark < 50 ? 'trk-val red' : ''}>{r.avgMark}%</span>
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
+                  </td>
+                  <td>
+                    {r.actions.total > 0 ? (
+                      `${r.actions.done}/${r.actions.total}`
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
+                  </td>
+                  <td>
+                    <RiskPill athlete={r.a} />
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {rows.map((a) => {
-                  const score = academicRiskScore(a);
-                  const r = academicRisk(a);
-                  const cell = (v, warn) =>
-                    v == null ? '—' : <span className={v < warn ? 'metric-bad' : ''}>{v}%</span>;
-                  return (
-                    <tr key={a.id} className={`risk-row risk-${r}`}>
-                      <td>
-                        <button className="linklike" onClick={() => onOpen(a.id)}>
-                          {a.firstName} {a.lastName}
-                        </button>
-                      </td>
-                      <td>{cell(a.lectureAttendance, 70)}</td>
-                      <td>{cell(a.tutorialAttendance, 70)}</td>
-                      <td>{cell(a.assignmentCompletion, 80)}</td>
-                      <td>{cell(a.semesterAverage, 50)}</td>
-                      <td>
-                        {a.facultyWarning === 'Yes' ? (
-                          <Pill tone="red">Yes</Pill>
-                        ) : a.facultyWarning === 'No' ? (
-                          'No'
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td>
-                        <RiskPill athlete={a} />
-                      </td>
-                      <td>{score != null ? score : '—'}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <Btn size="sm" onClick={() => setEditing(a)}>
-                          Edit
-                        </Btn>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-    </>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }
 

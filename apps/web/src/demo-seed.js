@@ -224,6 +224,69 @@ export function demoCheckIns() {
       followUpRequired: 'Yes',
       version: 2,
     },
+    // A strong all-round student (Thabo Van Wyk) — Standing green.
+    {
+      id: 'chk-demo-thabo',
+      token: 'demo-report-thabo',
+      studentNumber: 'VANTHA002',
+      athleteName: 'Thabo Van Wyk',
+      mentor: 'Mr David Petersen',
+      mentorEmail: 'david.petersen@example.com',
+      date: dayOffset(-10),
+      completedAt: `${dayOffset(-10)}T10:00:00.000Z`,
+      kind: 'adp',
+      period: 'Second semester 2026',
+      planStatus: 'completed',
+      scheduledNext: dayOffset(28),
+      modules: [
+        { code: 'MAM1000W', name: 'Mathematics', status: 'watch', difficulty: 3, screener: { attending: 'Yes', understanding: 'Getting by', assessments: 'On track', difficulty: 'Manageable' } },
+      ],
+      sections: {
+        content: { modules: { MAM1000W: { concepts: 4, pace: 4, engagement: 5, resources: 4 } }, note: 'Confident; just needs to keep the pace.' },
+        assessments: { modules: { MAM1000W: { planning: 4, submissions: 4, marks: 4, examReady: 4 } }, note: '' },
+        worklife: { ratings: { load: 4, time: 4, wellbeing: 4, finance: 4, support: 4 }, note: '' },
+        careers: { ratings: { direction: 4, alignment: 4, experience: 4, network: 4 }, note: '' },
+      },
+      plan: [
+        { section: 'assessments', text: 'Do a timed past paper before the next test', done: true },
+        { section: 'careers', text: 'Update my CV', done: false },
+      ],
+      note: 'Strong across the board — keep the momentum, light-touch check-ins.',
+      followUpRequired: 'No',
+      version: 1,
+    },
+    // A struggling student (Liam Ngcobo) — Standing red/critical.
+    {
+      id: 'chk-demo-liam',
+      token: 'demo-report-liam',
+      studentNumber: 'NGCLIA003',
+      athleteName: 'Liam Ngcobo',
+      mentor: 'Dr Naledi Khumalo',
+      mentorEmail: 'naledi.khumalo@example.com',
+      date: dayOffset(-8),
+      completedAt: `${dayOffset(-8)}T10:00:00.000Z`,
+      kind: 'adp',
+      period: 'Second semester 2026',
+      planStatus: 'completed',
+      scheduledNext: dayOffset(10),
+      modules: [
+        { code: 'CSC1015F', name: 'Computer Science', convener: 'A/Prof H Suleman', credits: 18, status: 'at_risk', difficulty: 4, screener: { attending: 'Patchy', understanding: 'Struggling', assessments: 'Behind', difficulty: 'Hard' } },
+      ],
+      sections: {
+        content: { modules: { CSC1015F: { concepts: 2, pace: 1, engagement: 2, resources: 2 } }, note: 'Falling behind in CS — needs a tutor urgently.' },
+        assessments: { modules: { CSC1015F: { planning: 2, submissions: 2, marks: 1, examReady: 1 } }, note: 'Behind on prac submissions.' },
+        worklife: { ratings: { load: 2, time: 2, wellbeing: 3, finance: 3, support: 3 }, note: '' },
+        careers: { ratings: { direction: 3, alignment: 3, experience: 1, network: 2 }, note: '' },
+      },
+      plan: [
+        { section: 'content', text: 'Book weekly sessions with a course tutor', done: false },
+        { section: 'content', text: 'Go to the SI / hot-seat sessions each week', done: false },
+        { section: 'assessments', text: 'Hand in the next assignment on time', done: false },
+      ],
+      note: 'At risk in Computer Science — urgent tutor + SI, review in two weeks.',
+      followUpRequired: 'Yes',
+      version: 1,
+    },
   ];
 }
 

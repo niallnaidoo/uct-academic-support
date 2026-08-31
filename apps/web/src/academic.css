@@ -1595,3 +1595,22 @@ a.btn {
   font-size: 13px;
   margin: 0 0 12px;
 }
+
+/* Academic tracker: 1–5 area averages coloured like the RAG scale */
+.trk-val {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.trk-val.green {
+  color: var(--green-mid);
+}
+.trk-val.amber {
+  color: #8a6516;
+}
+.trk-val.red {
+  color: #a83718;
+}
+.trk-tbl th,
+.trk-tbl td {
+  white-space: nowrap;
+}
