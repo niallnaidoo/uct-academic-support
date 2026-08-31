@@ -97,7 +97,15 @@ Run the session in this order, ONE question at a time, in plain, friendly langua
 5. Agree when you'll next check in and call set_next_session.
 6. Summarise what you heard and the support you agreed, thank them, and call submit_plan.
 
-Rules: never lecture; keep turns short; always reflect feelings before moving on. If the student sounds distressed, overwhelmed, unsafe, or mentions self-harm, money or housing crisis, immediately call flag_wellbeing, tell them you're making sure a person from the office reaches out today, and gently continue only if they're comfortable. Do not give medical, legal or financial advice — route to the relevant service instead. Record facts with the tools as you go; don't wait until the end.`;
+Voice & style — this is a spoken chat, so sound like a real, relaxed person, not a form:
+- Warm and human. Use the student's name now and then. Contractions, everyday words, short sentences.
+- ONE thing at a time. Ask a question, then stop and actually listen. Never stack two questions.
+- Always react first, then ask. Reflect what you heard in a few words ("ah, on and off — that's really common in season") before the next question. Little affirmations are good ("got it", "no stress", "love that").
+- Draw them out with open questions and gentle follow-ups rather than yes/no checklists — e.g. "how's [module] actually feeling?", "walk me through a normal week", "where do you picture this taking you?".
+- Vary your phrasing; don't repeat the same stem. Keep it moving, keep it light, but let them talk.
+- Numbers are for you, not them: instead of "rate 1 to 5", ask how it's going and then privately map it to a score for the tools.
+
+Safety: if the student sounds distressed, overwhelmed, unsafe, or mentions self-harm, money or housing crisis, immediately call flag_wellbeing, warmly tell them you're making sure a person from the office reaches out today, and gently continue only if they're comfortable. Give no medical, legal or financial advice — route to the relevant service. Record facts with the tools as you go; don't wait until the end.`;
 
 /* ─────────────────────── Tool implementations + payload ──────────────────── */
 
@@ -211,45 +219,94 @@ export function makeCollector(ctx) {
  * calling the same tools the real agent would. The page pumps it and speaks each
  * line aloud with the browser's speech synthesis.
  */
+// Conversational chip labels mapped to the screener/enum values the tools want.
+const ATTEND = { 'Yeah, mostly': 'Yes', 'On and off': 'Patchy', 'Not really': 'No' };
+const FOLLOW = { 'Following it': 'Comfortably', 'Sort of': 'Getting by', 'Honestly lost': 'Struggling' };
+const ASSESS = { 'Keeping up': 'On track', 'A bit behind': 'Slightly behind', 'Pretty behind': 'Behind' };
+
 export async function* mockMentorScript(ctx, tools) {
   const first = ctx.firstName || 'there';
-  yield { text: `Hi ${first}, I'm your academic mentor. This'll take about ten minutes — no wrong answers, I just want to line up the right support for you. Ready?`, choices: ["Let's go"] };
+  yield {
+    text: `Hey ${first}! Good to actually talk to you. Think of this as a relaxed chat, not a test — about ten minutes, and we just figure out what's going well and where a bit of support would help. That alright?`,
+    choices: ["Yeah, let's do it"],
+  };
 
   const modules = (ctx.modules ?? []).slice(0, 2);
   for (const m of modules) {
-    const attending = yield { text: `Let's start with ${m.code}${m.name ? ` — ${m.name}` : ''}. Are you making it to the lectures and tutorials?`, choices: ['Yes', 'Patchy', 'No'] };
-    const understanding = yield { text: `Got it. And are you following the material in ${m.code}?`, choices: ['Comfortably', 'Getting by', 'Struggling'] };
-    const assessments = yield { text: `Thanks for being honest. Are you on track with the tests and assignments?`, choices: ['On track', 'Slightly behind', 'Behind'] };
-    tools.screen_module({ code: m.code, attending, understanding, assessments, difficulty: 'Manageable' });
+    const label = m.name || m.code;
+    const attendRaw = yield {
+      text: `Let's start with ${label}. Be honest with me — are you actually getting to the lectures and tuts, or is it a bit hit-and-miss?`,
+      choices: ['Yeah, mostly', 'On and off', 'Not really'],
+    };
+    const r1 =
+      attendRaw === 'Not really'
+        ? `No stress — happens to everyone, and it's good you're being straight with me.`
+        : attendRaw === 'On and off'
+          ? `Yeah, on and off — super common, especially in season.`
+          : `Nice, that's a solid base already.`;
+    const followRaw = yield {
+      text: `${r1} And when you're in there — is the content clicking, or does some of it go a bit over your head?`,
+      choices: ['Following it', 'Sort of', 'Honestly lost'],
+    };
+    const r2 =
+      followRaw === 'Honestly lost'
+        ? `Okay — that's exactly the kind of thing we can sort with the right help, so I'm glad you said it.`
+        : followRaw === 'Sort of'
+          ? `Got it, so there are a few gaps.`
+          : `Love that.`;
+    const assessRaw = yield {
+      text: `${r2} How about the tests and assignments — you keeping up, or feeling a bit behind?`,
+      choices: ['Keeping up', 'A bit behind', 'Pretty behind'],
+    };
+    tools.screen_module({
+      code: m.code,
+      attending: ATTEND[attendRaw] ?? 'Patchy',
+      understanding: FOLLOW[followRaw] ?? 'Getting by',
+      assessments: ASSESS[assessRaw] ?? 'Slightly behind',
+      difficulty: 'Manageable',
+    });
   }
 
   const AREAS = [
-    { key: 'content', q: 'Now, thinking about actually understanding your coursework — how is that going, on a scale of 1 to 5?' },
-    { key: 'assessments', q: 'And your tests, assignments and exam prep — where would you put that, 1 to 5?' },
-    { key: 'worklife', q: 'How about balancing training, matches and study — 1 to 5?' },
-    { key: 'careers', q: 'Last one — how clear are you on where this degree is taking you, 1 to 5?' },
+    { key: 'content', q: `Let's zoom out a bit. Overall, how's the actual learning feeling for you this term — are you on top of it or is it a grind right now?` },
+    { key: 'assessments', q: `And when you think about all the deadlines and exams coming up — how's that sitting with you?` },
+    { key: 'worklife', q: `Now the real one — juggling training, matches and studying. How are you holding up with all of it?` },
+    { key: 'careers', q: `Last thing — do you have a sense of where this degree is taking you, or is that still pretty fuzzy?` },
   ];
+  const scaleChoices = ['Really struggling', 'Bit of a grind', 'Okay', 'Pretty good', 'Nailing it'];
+  const scaleToScore = { 'Really struggling': 1, 'Bit of a grind': 2, Okay: 3, 'Pretty good': 4, 'Nailing it': 5 };
   for (const area of AREAS) {
-    const raw = yield { text: area.q, choices: ['1', '2', '3', '4', '5'] };
-    const score = Number(raw) || 3;
+    const raw = yield { text: area.q, choices: scaleChoices };
+    const score = scaleToScore[raw] ?? 3;
     tools.assess_area({ area: area.key, score });
     if (score <= 3) {
       const suggestion = ACTION_SECTION_META[area.key]?.items?.[0];
       if (suggestion) {
-        const ans = yield { text: `Okay — that's exactly what I'm here for. How about we set this: "${suggestion}"?`, choices: ['Add it', 'Skip'] };
-        if (ans === 'Add it') tools.add_action({ area: area.key, text: suggestion });
+        const ans = yield {
+          text: `Totally fair, and honestly that's what I'm here for. Here's one small thing that tends to really help — how about you try to ${suggestion.charAt(0).toLowerCase()}${suggestion.slice(1)}? Want me to pop that on your list?`,
+          choices: ['Yeah, add it', 'Not right now'],
+        };
+        if (ans === 'Yeah, add it') tools.add_action({ area: area.key, text: suggestion });
       }
       if (area.key === 'worklife' && score <= 2) {
-        tools.flag_wellbeing({ concern: 'Student rated work-life balance low' });
-        yield { text: `That sounds like a lot to carry. I'm flagging this so someone from the office checks in with you today — you don't have to handle it alone. Shall we keep going?`, choices: ["Yes, let's continue"] };
+        tools.flag_wellbeing({ concern: 'Student sounded stretched on work-life balance' });
+        yield {
+          text: `Hey — that's a lot to be carrying, and you shouldn't have to do it on your own. I'm going to make sure someone from the office reaches out to you today, okay? We'll keep this easy. Good to carry on?`,
+          choices: ["Yeah, I'm okay"],
+        };
       }
     } else {
-      yield { text: `Love that — keep doing what's working.`, choices: ['👍'] };
+      yield { text: `That's great to hear — whatever you're doing there, keep it up.`, choices: ['Thanks'] };
     }
   }
 
-  yield { text: `Great. I'll set a check-in for a few weeks' time to see how the actions are landing.` };
+  yield { text: `Alright ${first}, that's everything. I'll pencil in a catch-up in a few weeks to see how it's going.` };
   tools.set_next_session({ date: ctx.suggestedNext });
-  yield { text: `Here's what I heard: you're engaged and putting the work in, with some targeted support lined up. I'm saving your plan now — you'll get a link to see it and tick off your actions. Thanks for the honesty, ${first}.`, choices: ['Thanks!'] };
-  tools.submit_plan({ summary: `AI-mentor session with ${first}. Support agreed across the areas that needed it; actions set for the student to action.` });
+  yield {
+    text: `Honestly, thanks for being so open with me — that's the hard part and you did it. I'm saving your plan now, and you'll get a link to see it and tick off the little actions as you go. You've got this.`,
+    choices: ['Thanks!'],
+  };
+  tools.submit_plan({
+    summary: `AI-mentor conversation with ${first}. Talked through each module and area; support agreed where needed and actions set for the student.`,
+  });
 }

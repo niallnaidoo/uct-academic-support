@@ -23,12 +23,41 @@ import { ADP_SECTION_META } from './academic-model.js';
 import './academic.css';
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// The demo uses the browser's own speech (a stop-gap — the real, natural voice
+// comes from ElevenLabs). Pick the most natural English voice available.
+let cachedVoice = null;
+function bestVoice() {
+  if (cachedVoice) return cachedVoice;
+  if (typeof speechSynthesis === 'undefined') return null;
+  const voices = speechSynthesis.getVoices() || [];
+  const prefer = ['Samantha', 'Google UK English Female', 'Google US English', 'Serena', 'Karen', 'Moira', 'Fiona', 'Aria', 'Jenny'];
+  const found =
+    prefer.map((n) => voices.find((v) => v.name && v.name.includes(n))).find(Boolean) ||
+    voices.find((v) => /en[-_]/i.test(v.lang) && /female|samantha|karen|serena|moira|aria/i.test(v.name || '')) ||
+    voices.find((v) => /en[-_]/i.test(v.lang)) ||
+    voices[0] ||
+    null;
+  if (found) cachedVoice = found;
+  return found;
+}
+if (typeof speechSynthesis !== 'undefined') {
+  try {
+    speechSynthesis.getVoices();
+    speechSynthesis.addEventListener?.('voiceschanged', () => (cachedVoice = null));
+  } catch {
+    /* ignore */
+  }
+}
 function speak(text, muted) {
   if (muted || typeof speechSynthesis === 'undefined') return;
   try {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text.replace(/[“”"]/g, ''));
-    u.rate = 1.03;
+    const v = bestVoice();
+    if (v) u.voice = v;
+    u.rate = 0.97;
+    u.pitch = 1.05;
     speechSynthesis.speak(u);
   } catch {
     /* no voice available */
